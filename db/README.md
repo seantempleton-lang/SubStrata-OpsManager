@@ -38,6 +38,29 @@ psql "$DATABASE_URL" -f db/002_seed.sql
 
 If you are importing through Coolify and want to use plain SQL instead of a custom `pg_dump` archive, use `psql` as the import command for the SQL files.
 
+## Migration Workflow
+
+The repo now includes a small Node migration runner in [scripts/db-migrate.mjs](/C:/Users/SeanTempleton/OneDrive%20-%20McMillan%20Drilling%20Ltd/Documents/GitHub/SubStrata-OpsManager/scripts/db-migrate.mjs).
+
+Use it with:
+
+```bash
+npm run db:migrate
+npm run db:migrate:status
+```
+
+How it works:
+
+- every SQL file in `db/` matching `NNN_name.sql` is treated as a migration
+- applied migrations are tracked in a `schema_migrations` table
+- each migration is checksum-protected, so changing an already-applied file will be flagged
+
+Recommended practice:
+
+1. Treat `001_schema.sql` and `002_seed.sql` as immutable once applied to shared environments.
+2. Add new changes as `003_*.sql`, `004_*.sql`, and so on.
+3. Use `002_seed.sql` only for development/demo environments unless you intentionally want seed data elsewhere.
+
 ## Suggested App Environment Variables
 
 ```env
