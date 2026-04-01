@@ -107,14 +107,14 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                       <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12, color: priColors[ins.priority], background: priColors[ins.priority] + "20", textTransform: "uppercase" }}>{ins.priority}</span>
                     )}
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12, color: hasFaults ? COLORS.red : COLORS.green, background: hasFaults ? COLORS.redLight : COLORS.greenLight }}>
-                      {hasFaults ? `${ins.faults.length} fault${ins.faults.length > 1 ? "s" : ""}` : "âœ“ Pass"}
+                      {hasFaults ? `${ins.faults.length} fault${ins.faults.length > 1 ? "s" : ""}` : "? Pass"}
                     </span>
                   </div>
                 </div>
                 {hasFaults && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
                     {ins.faults.map((f, fi) => (
-                      <div key={fi} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", background: COLORS.redLight, borderRadius: 7, fontSize: 12, color: "#7F1D1D" }}>âš  {f}</div>
+                      <div key={fi} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", background: COLORS.redLight, borderRadius: 7, fontSize: 12, color: "#7F1D1D" }}>? {f}</div>
                     ))}
                     <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                       <button style={{ padding: "6px 14px", background: COLORS.navyLight, border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, color: COLORS.white, cursor: "pointer" }}>Assign to Workshop</button>
@@ -167,7 +167,7 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                   </div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.textPrimary, lineHeight: 1.2 }}>{eq.name}</div>
-                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{eq.category} Â· {eq.year}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{eq.category} ? {eq.year}</div>
                   </div>
                 </div>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: st.color, background: st.bg, whiteSpace: "nowrap" }}>
@@ -186,7 +186,7 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                 <div style={{ padding: "8px 10px", background: COLORS.bg, borderRadius: 7, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>Assigned to</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textPrimary, marginTop: 1 }}>{linkedJob.id} â€” {linkedJob.client}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textPrimary, marginTop: 1 }}>{linkedJob.id} ? {linkedJob.client}</div>
                   </div>
                   <StatusBadge status={linkedJob.status} />
                 </div>
@@ -196,13 +196,13 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                 <div onClick={e => { e.stopPropagation(); setDrilldownEq(eq.id); }}
                   style={{ padding: "6px 10px", background: latestIns.faults.length > 0 ? COLORS.redLight : COLORS.greenLight, borderRadius: 6, fontSize: 11, display: "flex", justifyContent: "space-between", cursor: "pointer", marginBottom: eq.notes ? 6 : 0 }}>
                   <span style={{ color: latestIns.faults.length > 0 ? "#7F1D1D" : "#065F46", fontWeight: 600 }}>
-                    {latestIns.faults.length > 0 ? `âš  ${latestIns.faults.length} fault${latestIns.faults.length > 1 ? "s" : ""} â€” tap for history` : "âœ“ Last inspection passed â€” tap for history"}
+                    {latestIns.faults.length > 0 ? `? ${latestIns.faults.length} fault${latestIns.faults.length > 1 ? "s" : ""} ? tap for history` : "? Last inspection passed ? tap for history"}
                   </span>
                   <span style={{ color: COLORS.textMuted }}>{latestIns.date}</span>
                 </div>
               )}
               {eq.notes && (
-                <div style={{ marginTop: 0, padding: "6px 10px", background: COLORS.orangeLight, borderRadius: 6, fontSize: 11, color: "#92400E" }}>âš  {eq.notes}</div>
+                <div style={{ marginTop: 0, padding: "6px 10px", background: COLORS.orangeLight, borderRadius: 6, fontSize: 11, color: "#92400E" }}>? {eq.notes}</div>
               )}
             </div>
           );
@@ -233,7 +233,7 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                 </div>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.white }}>{eq?.name}</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{eq?.category} Â· {eq?.year} Â· {eq?.region}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{eq?.category} ? {eq?.year} ? {eq?.region}</div>
                 </div>
               </div>
               <button onClick={() => setDrilldownEq(null)}
@@ -248,7 +248,7 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                 { label: "Total Inspections", value: eqInspections.length,      color: COLORS.textPrimary },
                 { label: "Open Faults",        value: openCount,                 color: openCount > 0 ? COLORS.red : COLORS.green },
                 { label: "Pass Rate",          value: passRate + "%",            color: passRate === 100 ? COLORS.green : passRate >= 75 ? COLORS.teal : COLORS.orange },
-                { label: "Last Inspected",     value: eqInspections[0]?.date || "â€”", color: COLORS.textSecondary },
+                { label: "Last Inspected",     value: eqInspections[0]?.date || "?", color: COLORS.textSecondary },
               ].map((s, si) => (
                 <div key={s.label} style={{ padding: "14px 20px", borderRight: si < 3 ? `1px solid ${COLORS.border}` : "none", background: COLORS.bg }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>{s.label}</div>
@@ -305,7 +305,7 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                             <div key={fi} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: ins.status === "resolved" ? COLORS.bg : COLORS.redLight, borderRadius: 6, fontSize: 12,
                               color: ins.status === "resolved" ? COLORS.textMuted : "#7F1D1D",
                               textDecoration: ins.status === "resolved" ? "line-through" : "none" }}>
-                              {ins.status === "resolved" ? "âœ“" : "âš "} {f}
+                              {ins.status === "resolved" ? "?" : "?"} {f}
                             </div>
                           ))}
                         </div>
@@ -320,7 +320,7 @@ const ResourcesScreen = ({ subTab = "plant", setSubTab = () => {}, regionFilter 
                       {!hasFaults && (
                         <div style={{ fontSize: 12, color: COLORS.green, display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={COLORS.green} strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                          No faults â€” all clear
+                          No faults ? all clear
                         </div>
                       )}
                     </div>
@@ -472,7 +472,7 @@ const PersonnelScreen = () => {
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8, color: s.division === "Water" ? COLORS.blue : COLORS.teal, background: s.division === "Water" ? COLORS.blueLight : COLORS.tealLight, flexShrink: 0 }}>{s.division}</span>
                 </div>
-                <div style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 10 }}>Region: {s.region} Â· Reports to: {s.supervisor?.split(" ")[0]}</div>
+                <div style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 10 }}>Region: {s.region} ? Reports to: {s.supervisor?.split(" ")[0]}</div>
                 {ts && (
                   <div style={{ padding: "7px 10px", background: COLORS.bg, borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <span style={{ fontSize: 11, color: COLORS.textMuted }}>This week: <strong style={{ color: COLORS.textPrimary }}>{calcTsHours(ts)}h</strong></span>
@@ -483,12 +483,12 @@ const PersonnelScreen = () => {
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {pendingLeave.map(a => (
                       <span key={a.id} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8, color: COLORS.blue, background: COLORS.blueLight }}>
-                        â³ {ltLabel(a.type)} pending
+                        ? {ltLabel(a.type)} pending
                       </span>
                     ))}
                     {approvedLeave.map(a => (
                       <span key={a.id} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8, color: ltColor(a.type), background: ltColor(a.type) + "20" }}>
-                        âœ“ {ltLabel(a.type)} {a.start}
+                        ? {ltLabel(a.type)} {a.start}
                       </span>
                     ))}
                   </div>
@@ -506,7 +506,7 @@ const PersonnelScreen = () => {
           {leaveApps.filter(a => a.status === "pending").length > 0 && (
             <div style={{ background: COLORS.white, borderRadius: 12, border: `2px solid ${COLORS.blue}30`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div style={{ padding: "12px 18px", background: "#F0F6FF", borderBottom: `1px solid ${COLORS.border}`, fontWeight: 700, fontSize: 13, color: COLORS.blue }}>
-                Pending Leave Requests â€” Awaiting Approval
+                Pending Leave Requests ? Awaiting Approval
               </div>
               {leaveApps.filter(a => a.status === "pending").map(app => {
                 const conflicts = checkPlannerConflicts(app);
@@ -526,15 +526,15 @@ const PersonnelScreen = () => {
                         <span style={{ fontSize: 11, color: COLORS.textMuted }}>{app.days} day{app.days !== 1 ? "s" : ""}</span>
                       </div>
                       <div style={{ fontSize: 12, color: COLORS.textSecondary }}>
-                        {app.start === app.end ? app.start : `${app.start} â€“ ${app.end}`}
-                        {app.notes && <span style={{ color: COLORS.textMuted }}> Â· {app.notes}</span>}
+                        {app.start === app.end ? app.start : `${app.start} ? ${app.end}`}
+                        {app.notes && <span style={{ color: COLORS.textMuted }}> ? {app.notes}</span>}
                       </div>
                       {/* Conflict warning */}
                       {conflicts.length > 0 && (
                         <div style={{ marginTop: 6, display: "flex", gap: 5, flexWrap: "wrap" }}>
                           {conflicts.map((c, ci) => (
                             <span key={ci} style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 8, color: COLORS.red, background: COLORS.redLight, display: "flex", alignItems: "center", gap: 4 }}>
-                              âš  Assigned to {c.jobId} ({c.start}â€“{c.end})
+                              ? Assigned to {c.jobId} ({c.start}?{c.end})
                             </span>
                           ))}
                         </div>
@@ -544,7 +544,7 @@ const PersonnelScreen = () => {
                     <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                       <button onClick={() => handleApprove(app)}
                         style={{ padding: "7px 16px", background: conflicts.length > 0 ? COLORS.orange : COLORS.greenLight, border: `1px solid ${conflicts.length > 0 ? COLORS.orange : COLORS.green}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: conflicts.length > 0 ? COLORS.white : COLORS.green, cursor: "pointer" }}>
-                        {conflicts.length > 0 ? "âš  Approve Anyway" : "âœ“ Approve"}
+                        {conflicts.length > 0 ? "? Approve Anyway" : "? Approve"}
                       </button>
                       <button onClick={() => declineLeave(app.id)}
                         style={{ padding: "7px 12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}30`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.red, cursor: "pointer" }}>
@@ -561,12 +561,12 @@ const PersonnelScreen = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setCalMonth(new Date(calYear, calMon - 1, 1))}
-                style={{ width: 32, height: 32, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 7, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>â€¹</button>
+                style={{ width: 32, height: 32, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 7, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>?</button>
               <span style={{ fontSize: 16, fontWeight: 800, color: COLORS.textPrimary, minWidth: 160, textAlign: "center" }}>
                 {calMonth.toLocaleDateString("en-NZ", { month: "long", year: "numeric" })}
               </span>
               <button onClick={() => setCalMonth(new Date(calYear, calMon + 1, 1))}
-                style={{ width: 32, height: 32, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 7, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>â€º</button>
+                style={{ width: 32, height: 32, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 7, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>?</button>
             </div>
             {/* Staff filter */}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -619,10 +619,10 @@ const PersonnelScreen = () => {
                       const staff = STAFF.find(s => s.id === a.userId);
                       const isPending = a.status === "pending";
                       return (
-                        <div key={a.id} title={`${a.staffName} â€” ${lt?.label}`}
+                        <div key={a.id} title={`${a.staffName} ? ${lt?.label}`}
                           style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: lt?.color || COLORS.textMuted, opacity: isPending ? 0.6 : 1, borderRadius: 4, padding: "2px 5px", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "default",
                             border: isPending ? `1px dashed ${COLORS.white}` : "none" }}>
-                          {staff?.initials} {isPending ? "â³" : ""}
+                          {staff?.initials} {isPending ? "?" : ""}
                         </div>
                       );
                     })}
@@ -649,7 +649,7 @@ const PersonnelScreen = () => {
           {/* Approved leave list */}
           <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
             <div style={{ padding: "12px 18px", borderBottom: `1px solid ${COLORS.border}`, fontWeight: 700, fontSize: 13, color: COLORS.textPrimary, background: COLORS.bg }}>
-              All Leave â€” {calMonth.toLocaleDateString("en-NZ", { month: "long", year: "numeric" })}
+              All Leave ? {calMonth.toLocaleDateString("en-NZ", { month: "long", year: "numeric" })}
             </div>
             {leaveApps.filter(a => {
               const monthStr = `${calYear}-${String(calMon + 1).padStart(2,"0")}`;
@@ -669,7 +669,7 @@ const PersonnelScreen = () => {
                 <div key={a.id} style={{ padding: "12px 18px", borderBottom: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.textPrimary, minWidth: 100 }}>{a.staffName}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 8, color: lt?.color, background: lt?.color + "20" }}>{lt?.label}</span>
-                  <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{a.start === a.end ? a.start : `${a.start} â€“ ${a.end}`} Â· {a.days}d</span>
+                  <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{a.start === a.end ? a.start : `${a.start} ? ${a.end}`} ? {a.days}d</span>
                   {a.notes && <span style={{ fontSize: 11, color: COLORS.textMuted, flex: 1 }}>{a.notes}</span>}
                   <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 8, color: statusCfg.color, background: statusCfg.bg }}>{statusCfg.label}</span>
                   {a.status === "approved" && a.approvedBy && (
@@ -709,24 +709,24 @@ const PersonnelScreen = () => {
                       <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: COLORS.red }}>{c.jobId}</span>
                       <span style={{ fontSize: 12, color: "#7F1D1D", marginLeft: 8 }}>{c.client}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#7F1D1D" }}>{c.start} â€“ {c.end}</div>
+                    <div style={{ fontSize: 11, color: "#7F1D1D" }}>{c.start} ? {c.end}</div>
                   </div>
                 );
               })}
               <div style={{ fontSize: 11, color: "#7F1D1D", marginTop: 4, paddingTop: 8, borderTop: "1px solid rgba(239,68,68,0.2)" }}>
-                âš  Approving this leave without reassigning personnel may leave these jobs understaffed. Consider updating the Planner.
+                ? Approving this leave without reassigning personnel may leave these jobs understaffed. Consider updating the Planner.
               </div>
             </div>
 
             {/* Leave summary */}
             <div style={{ background: COLORS.bg, borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: COLORS.textSecondary }}>
-              Leave: <strong style={{ color: COLORS.textPrimary }}>{conflictModal.app.staffName}</strong> Â· {ltLabel(conflictModal.app.type)} Â· {conflictModal.app.start} â€“ {conflictModal.app.end}
+              Leave: <strong style={{ color: COLORS.textPrimary }}>{conflictModal.app.staffName}</strong> ? {ltLabel(conflictModal.app.type)} ? {conflictModal.app.start} ? {conflictModal.app.end}
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConflictModal(null)}
                 style={{ flex: 1, padding: "12px", background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, color: COLORS.textPrimary, cursor: "pointer" }}>
-                Cancel â€” Revisit Later
+                Cancel ? Revisit Later
               </button>
               <button onClick={() => declineLeave(conflictModal.app.id)}
                 style={{ flex: 1, padding: "12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}30`, borderRadius: 10, fontSize: 14, fontWeight: 700, color: COLORS.red, cursor: "pointer" }}>

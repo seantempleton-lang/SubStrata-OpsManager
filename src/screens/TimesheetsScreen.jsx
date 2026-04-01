@@ -70,7 +70,7 @@ const DayTypeBadge = ({ day }) => {
 };
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// MANAGER VIEW â€” desktop approval queue
+// MANAGER VIEW ? desktop approval queue
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
   const [filter, setFilter] = useState("pending");
@@ -143,7 +143,7 @@ const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
                   </div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>{ts.user}</div>
-                    <div style={{ fontSize: 11, color: COLORS.textMuted }}>{staff?.role} Â· {staff?.region}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted }}>{staff?.role} ? {staff?.region}</div>
                   </div>
                   <div style={{ marginLeft: 8 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, color: cfg.color, background: cfg.bg }}>
@@ -156,7 +156,7 @@ const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
                   <ApprovalPipeline status={ts.status} />
                   <button onClick={() => onViewTimesheet(ts)}
                     style={{ padding: "7px 14px", background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 12, fontWeight: 600, color: COLORS.textPrimary, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    View Full â†’
+                    View Full ?
                   </button>
                 </div>
               </div>
@@ -188,7 +188,7 @@ const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
                   {ts.status === "submitted" && (
                     <>
                       <button style={{ padding: "7px 16px", background: COLORS.greenLight, border: `1px solid ${COLORS.green}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.green, cursor: "pointer" }}>
-                        âœ“ Approve (Supervisor)
+                        ? Approve (Supervisor)
                       </button>
                       <button style={{ padding: "7px 12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.red, cursor: "pointer" }}>
                         Return
@@ -198,7 +198,7 @@ const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
                   {ts.status === "supervisor_approved" && (
                     <>
                       <button style={{ padding: "7px 16px", background: COLORS.green, border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.white, cursor: "pointer" }}>
-                        âœ“ Final Approve
+                        ? Final Approve
                       </button>
                       <button style={{ padding: "7px 12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.red, cursor: "pointer" }}>
                         Return
@@ -227,7 +227,7 @@ const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
 };
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// TIMESHEET DETAIL â€” full view of one week (used by both views)
+// TIMESHEET DETAIL ? full view of one week (used by both views)
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const TimesheetDetail = ({ ts, onBack, isMobile }) => {
   const [activeDay, setActiveDay] = useState(null);
@@ -254,8 +254,8 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.blue} strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
           {isMobile ? "Back" : "Timesheets"}
         </button>
-        <span style={{ color: COLORS.textMuted }}>Â·</span>
-        <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{ts.user} â€” week of {fmtDay(ts.weekStart)}</span>
+        <span style={{ color: COLORS.textMuted }}>?</span>
+        <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{ts.user} ? week of {fmtDay(ts.weekStart)}</span>
       </div>
 
       {/* Status card */}
@@ -267,7 +267,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.textPrimary }}>{ts.user}</div>
-              <div style={{ fontSize: 12, color: COLORS.textMuted }}>Week of {fmtDay(weekDays[0])} â€“ {fmtDay(weekDays[6])}</div>
+              <div style={{ fontSize: 12, color: COLORS.textMuted }}>Week of {fmtDay(weekDays[0])} ? {fmtDay(weekDays[6])}</div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "flex-start" : "flex-end", gap: 8 }}>
@@ -307,7 +307,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
 
           return (
             <div key={date} style={{ background: COLORS.white, borderRadius: 10, border: `2px solid ${isToday ? COLORS.amber : COLORS.border}`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              {/* Day header â€” always visible */}
+              {/* Day header ? always visible */}
               <div onClick={() => isMobile && setActiveDay(activeDay === date ? null : date)}
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px",
                   background: day.dayType === "off" ? COLORS.bg : day.dayType === "leave" ? "#FFF8F1" : COLORS.white,
@@ -322,7 +322,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
                       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                         {dayJobs.map(jid => {
                           const job = JOBS.find(j => j.id === jid);
-                          return job ? <span key={jid} style={{ fontSize: 11, fontWeight: 600, color: job.division === "Water" ? COLORS.blue : COLORS.teal }}>{jid} â€” {job.client}</span> : null;
+                          return job ? <span key={jid} style={{ fontSize: 11, fontWeight: 600, color: job.division === "Water" ? COLORS.blue : COLORS.teal }}>{jid} ? {job.client}</span> : null;
                         })}
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -335,7 +335,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
                     </div>
                   )}
                   {day.dayType === "leave" && lt && (
-                    <span style={{ fontSize: 13, fontWeight: 700, color: lt.color }}>{lt.label}{day.notes ? ` â€” ${day.notes}` : ""}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: lt.color }}>{lt.label}{day.notes ? ` ? ${day.notes}` : ""}</span>
                   )}
                   {day.dayType === "off" && <span style={{ fontSize: 12, color: COLORS.textMuted }}>Day off</span>}
                 </div>
@@ -347,7 +347,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
                 )}
               </div>
 
-              {/* Entry details â€” shown when open */}
+              {/* Entry details ? shown when open */}
               {isOpen && day.dayType === "work" && day.entries.map((entry, ei) => {
                 const job = JOBS.find(j => j.id === entry.jobId);
                 const rt = RATE_TYPES.find(r => r.id === entry.rateType) || RATE_TYPES[0];
@@ -356,7 +356,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
                   <div key={ei} style={{ padding: "10px 14px 10px 58px", borderTop: `1px solid ${COLORS.border}`, background: ei % 2 === 0 ? COLORS.white : "#FAFBFC" }}>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr auto auto auto", gap: isMobile ? 6 : 16, alignItems: "start" }}>
                       <div>
-                        {job && <div style={{ fontSize: 12, fontWeight: 700, color: job.division === "Water" ? COLORS.blue : COLORS.teal }}>{job.id} â€” {job.title.split("â€”")[0].trim()}</div>}
+                        {job && <div style={{ fontSize: 12, fontWeight: 700, color: job.division === "Water" ? COLORS.blue : COLORS.teal }}>{job.id} ? {job.title.split("?")[0].trim()}</div>}
                         {entry.notes && <div style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>{entry.notes}</div>}
                         {entry.crewWith?.length > 0 && (
                           <div style={{ display: "flex", gap: 5, alignItems: "center", marginTop: 4 }}>
@@ -367,7 +367,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
                       </div>
                       <div style={{ textAlign: isMobile ? "left" : "right" }}>
                         {entry.startTime ? (
-                          <div style={{ fontSize: 12, color: COLORS.textSecondary }}>{entry.startTime} â€“ {entry.endTime} <span style={{ fontWeight: 800, color: COLORS.textPrimary, marginLeft: 4 }}>{eHours}h</span></div>
+                          <div style={{ fontSize: 12, color: COLORS.textSecondary }}>{entry.startTime} ? {entry.endTime} <span style={{ fontWeight: 800, color: COLORS.textPrimary, marginLeft: 4 }}>{eHours}h</span></div>
                         ) : (
                           <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.textPrimary }}>{eHours}h</span>
                         )}
@@ -403,7 +403,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
                     <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>{exp.description}</div>
                     <div style={{ fontSize: 11, color: COLORS.textMuted, display: "flex", alignItems: "center", gap: 5 }}>
                       {et.label}
-                      {exp.receipt && <span style={{ color: COLORS.green, fontWeight: 600 }}>Â· Receipt attached</span>}
+                      {exp.receipt && <span style={{ color: COLORS.green, fontWeight: 600 }}>? Receipt attached</span>}
                     </div>
                   </div>
                 </div>
@@ -418,7 +418,7 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
 };
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// MOBILE ENTRY VIEW â€” field staff time entry UI
+// MOBILE ENTRY VIEW ? field staff time entry UI
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const MobileTimesheetEntry = ({ onBack }) => {
   const TODAY = "2026-03-11";
@@ -543,7 +543,7 @@ const MobileTimesheetEntry = ({ onBack }) => {
 
       {tab === "time" && (
         <>
-          {/* Day selector â€” horizontal scroll */}
+          {/* Day selector ? horizontal scroll */}
           <div style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.border}`, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
             <div style={{ display: "flex", minWidth: "fit-content", padding: "8px 12px", gap: 6 }}>
               {weekDays.map((date, di) => {
@@ -565,7 +565,7 @@ const MobileTimesheetEntry = ({ onBack }) => {
                       ? <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? lt?.color : lt?.color, marginTop: 2 }}>LEAVE</span>
                       : hrs > 0
                         ? <span style={{ fontSize: 11, fontWeight: 800, color: isActive ? COLORS.amber : COLORS.teal, marginTop: 2 }}>{hrs}h</span>
-                        : <span style={{ fontSize: 9, color: isActive ? "rgba(255,255,255,0.3)" : COLORS.border, marginTop: 2 }}>â€”</span>}
+                        : <span style={{ fontSize: 9, color: isActive ? "rgba(255,255,255,0.3)" : COLORS.border, marginTop: 2 }}>?</span>}
                   </button>
                 );
               })}
@@ -641,10 +641,10 @@ const MobileTimesheetEntry = ({ onBack }) => {
                         <div style={{ marginBottom: 10 }}>
                           <label style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>Job</label>
                           <select value={entry.jobId} onChange={e => updateEntry(entry.id, "jobId", e.target.value)} style={selectSt}>
-                            {ACTIVE_JOBS.map(j => <option key={j.id} value={j.id}>{j.id} â€” {j.title.split("â€”")[0].trim()}</option>)}
+                            {ACTIVE_JOBS.map(j => <option key={j.id} value={j.id}>{j.id} ? {j.title.split("?")[0].trim()}</option>)}
                           </select>
                         </div>
-                        {/* Client display â€” auto-populated from job */}
+                        {/* Client display ? auto-populated from job */}
                         {job && (
                           <div style={{ marginBottom: 12, padding: "8px 12px", background: job.division === "Water" ? "#EFF6FF" : "#F0FDFA", borderRadius: 8, display: "flex", gap: 8, alignItems: "center" }}>
                             <Icon d={icons.clients} size={13} color={job.division === "Water" ? COLORS.blue : COLORS.teal} />
@@ -667,7 +667,7 @@ const MobileTimesheetEntry = ({ onBack }) => {
                         </div>
                         {entryHours > 0 && (
                           <div style={{ marginBottom: 12, padding: "6px 12px", background: COLORS.tealLight, borderRadius: 8, fontSize: 13, fontWeight: 700, color: COLORS.teal, textAlign: "center" }}>
-                            {entryHours} hour{entryHours !== 1 ? "s" : ""} â€” rate type assigned by supervisor on approval
+                            {entryHours} hour{entryHours !== 1 ? "s" : ""} ? rate type assigned by supervisor on approval
                           </div>
                         )}
                         {/* Notes */}
@@ -690,7 +690,7 @@ const MobileTimesheetEntry = ({ onBack }) => {
                                   style={{ padding: "6px 12px", borderRadius: 20, border: `2px solid ${selected ? COLORS.amber : COLORS.border}`,
                                     background: selected ? COLORS.amberLight : COLORS.white, cursor: "pointer",
                                     fontSize: 12, fontWeight: 700, color: selected ? COLORS.navy : COLORS.textMuted }}>
-                                  {s.initials} â€” {s.name.split(" ")[0]}
+                                  {s.initials} ? {s.name.split(" ")[0]}
                                 </button>
                               );
                             })}
@@ -761,7 +761,7 @@ const MobileTimesheetEntry = ({ onBack }) => {
       {tab === "leave" && (
         <div style={{ padding: "14px 14px 100px" }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.textPrimary, marginBottom: 4 }}>Leave Requests</div>
-          <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>Apply for leave on any day â€” go to the Time tab, select a day, then tap Leave</div>
+          <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>Apply for leave on any day ? go to the Time tab, select a day, then tap Leave</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {Object.values(days).filter(d => d.dayType === "leave").map(d => {
               const lt = LEAVE_TYPES.find(l => l.id === d.leaveType);
@@ -805,7 +805,7 @@ const MobileTimesheetEntry = ({ onBack }) => {
           Save Draft
         </button>
         <button style={{ flex: 2, padding: "14px", background: COLORS.amber, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, color: COLORS.navy, cursor: "pointer" }}>
-          Submit for Approval â†’
+          Submit for Approval ?
         </button>
       </div>
 
@@ -885,10 +885,10 @@ const MobileTimesheetEntry = ({ onBack }) => {
 };
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// MAIN TIMESHEETS SCREEN â€” toggles between manager and mobile views
+// MAIN TIMESHEETS SCREEN ? toggles between manager and mobile views
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const TimesheetsScreen = ({ regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
-  // Global filter helper for timesheets â€” filter by staff's division/region
+  // Global filter helper for timesheets ? filter by staff's division/region
   const tsVisible = (ts) => {
     const staff = STAFF.find(s => s.id === ts.userId);
     if (!staff) return true;
@@ -912,7 +912,7 @@ const TimesheetsScreen = ({ regionFilter = "all", divisionFilter = { Water: true
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>Timesheets</h1>
-          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Week of 9 Mar 2026 Â· Two-stage approval</p>
+          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Week of 9 Mar 2026 ? Two-stage approval</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           {/* Mobile preview button */}

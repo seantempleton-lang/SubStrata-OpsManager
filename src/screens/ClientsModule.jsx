@@ -9,7 +9,7 @@ const ClientsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Wa
   const filtered = CLIENTS.filter(c => {
     if (industryFilter !== "all" && c.industry !== industryFilter) return false;
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.code.toLowerCase().includes(search.toLowerCase())) return false;
-    // Region/division filter â€” include client if they have at least one job matching the filter
+    // Region/division filter ? include client if they have at least one job matching the filter
     const clientJobs = JOBS.filter(j => j.client === c.name);
     if (clientJobs.length > 0) {
       const match = clientJobs.some(j =>
@@ -85,7 +85,7 @@ const ClientsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Wa
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, padding: "12px 0", borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}`, marginBottom: 12 }}>
                 {[
                   { label: "Total Jobs", value: clientJobs.length },
-                  { label: "Contract Value", value: totalValue > 0 ? `$${(totalValue / 1000).toFixed(0)}k` : "â€”" },
+                  { label: "Contract Value", value: totalValue > 0 ? `$${(totalValue / 1000).toFixed(0)}k` : "?" },
                   { label: "Payment Terms", value: `${client.paymentTerms}d` },
                 ].map(stat => (
                   <div key={stat.label} style={{ textAlign: "center" }}>
@@ -100,7 +100,7 @@ const ClientsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Wa
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                   <Icon d={icons.user} size={13} color={COLORS.textMuted} />
                   <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{primaryContact.name}</span>
-                  <span style={{ fontSize: 11, color: COLORS.textMuted }}>Â· {primaryContact.role}</span>
+                  <span style={{ fontSize: 11, color: COLORS.textMuted }}>? {primaryContact.role}</span>
                 </div>
               )}
 
@@ -110,7 +110,7 @@ const ClientsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Wa
                   <Icon d={activityIcons[lastActivity.type] || icons.clients} size={12} color={COLORS.textMuted} style={{ marginTop: 1, flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
                     <span style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: 600 }}>{lastActivity.subject}</span>
-                    <span style={{ fontSize: 11, color: COLORS.textMuted }}> Â· {lastActivity.date}</span>
+                    <span style={{ fontSize: 11, color: COLORS.textMuted }}> ? {lastActivity.date}</span>
                   </div>
                 </div>
               )}
@@ -213,7 +213,7 @@ const ClientDetailScreen = ({ client, onBack, onNavigate }) => {
               ["Region", client.region],
               ["Phone", client.phone],
               ["Email", client.email],
-              ["Website", client.website || "â€”"],
+              ["Website", client.website || "?"],
               ["Billing Address", client.billingAddress],
               ["Payment Terms", `${client.paymentTerms} days`],
               ["Credit Limit", `$${client.creditLimit.toLocaleString()}`],
@@ -231,7 +231,7 @@ const ClientDetailScreen = ({ client, onBack, onNavigate }) => {
             <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "16px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.textPrimary }}>Recent Activity</span>
-                <button onClick={() => setTab("activity")} style={{ fontSize: 12, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View all â†’</button>
+                <button onClick={() => setTab("activity")} style={{ fontSize: 12, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View all ?</button>
               </div>
               {client.activities.slice(0, 3).map((act, i) => {
                 const cfg = activityTypeConfig[act.type] || activityTypeConfig.call;
@@ -243,7 +243,7 @@ const ClientDetailScreen = ({ client, onBack, onNavigate }) => {
                         <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.textPrimary }}>{act.subject}</span>
                       </div>
                     </div>
-                    <div style={{ fontSize: 11, color: COLORS.textMuted }}>{act.author} Â· {act.date}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted }}>{act.author} ? {act.date}</div>
                   </div>
                 );
               })}
@@ -252,7 +252,7 @@ const ClientDetailScreen = ({ client, onBack, onNavigate }) => {
             <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "16px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.textPrimary }}>Jobs</span>
-                <button onClick={() => setTab("jobs")} style={{ fontSize: 12, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View all â†’</button>
+                <button onClick={() => setTab("jobs")} style={{ fontSize: 12, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View all ?</button>
               </div>
               {clientJobs.length === 0 && <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>No jobs yet.</p>}
               {clientJobs.slice(0, 3).map(job => (
@@ -296,7 +296,7 @@ const ClientDetailScreen = ({ client, onBack, onNavigate }) => {
                   {[
                     { icon: icons.estimates, label: "Email", value: contact.email },
                     { icon: icons.time, label: "Phone", value: contact.phone },
-                    { icon: icons.user, label: "Mobile", value: contact.mobile || "â€”" },
+                    { icon: icons.user, label: "Mobile", value: contact.mobile || "?" },
                   ].map(item => (
                     <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <Icon d={item.icon} size={13} color={COLORS.textMuted} />
@@ -350,7 +350,7 @@ const ClientDetailScreen = ({ client, onBack, onNavigate }) => {
                           <ProgressBar value={job.invoiced} max={job.contractValue} color={job.division === "Water" ? COLORS.blue : COLORS.teal} />
                           <span style={{ fontSize: 11, color: COLORS.textMuted, whiteSpace: "nowrap" }}>{pct(job.invoiced, job.contractValue)}%</span>
                         </div>
-                      ) : <span style={{ fontSize: 12, color: COLORS.textMuted }}>â€”</span>}
+                      ) : <span style={{ fontSize: 12, color: COLORS.textMuted }}>?</span>}
                     </td>
                   </tr>
                 ))}

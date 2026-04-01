@@ -132,7 +132,7 @@ export default function App() {
       {/* â”€â”€ Sidebar â”€â”€ */}
       <div style={{ width: sidebarW, background: COLORS.navy, display: "flex", flexDirection: "column", flexShrink: 0, borderRight: `1px solid ${COLORS.navyBorder}`, transition: "width 0.2s ease", overflow: "hidden" }}>
 
-        {/* Logo â€” click to collapse */}
+        {/* Logo ? click to collapse */}
         <div onClick={() => setSidebarCollapsed(c => !c)}
           style={{ padding: SB ? "18px 0" : "18px 16px 14px", borderBottom: `1px solid ${COLORS.navyBorder}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: SB ? "center" : "flex-start", gap: 10, userSelect: "none" }}>
           <div style={{ width: 34, height: 34, borderRadius: 8, background: COLORS.navyLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid rgba(255,255,255,0.12)" }}>
@@ -203,7 +203,7 @@ export default function App() {
           {!SB && (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Sean Templeton</div>
-              <div style={{ fontSize: 10, color: "#64748B" }}>Lead Geotech Â· South</div>
+              <div style={{ fontSize: 10, color: "#64748B" }}>Lead Geotech ? South</div>
             </div>
           )}
         </div>

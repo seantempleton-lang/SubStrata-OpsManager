@@ -6,7 +6,7 @@ const InvoicingScreen = ({ regionFilter = "all", divisionFilter = { Water: true,
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>Invoicing</h1>
-        <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Progress claims Â· Field data linked Â· Client portal</p>
+        <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Progress claims ? Field data linked ? Client portal</p>
       </div>
       <button style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: COLORS.amber, color: COLORS.navy, border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
         <Icon d={icons.plus} size={14} color={COLORS.navy} /> New Invoice
@@ -28,7 +28,7 @@ const InvoicingScreen = ({ regionFilter = "all", divisionFilter = { Water: true,
     <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
       <div style={{ padding: "14px 20px", borderBottom: `1px solid ${COLORS.border}`, fontWeight: 700, fontSize: 14, color: COLORS.textPrimary, display: "flex", justifyContent: "space-between" }}>
         Recent Invoices
-        <span style={{ fontSize: 12, color: COLORS.blue, fontWeight: 600, cursor: "pointer" }}>Client Portal â†’</span>
+        <span style={{ fontSize: 12, color: COLORS.blue, fontWeight: 600, cursor: "pointer" }}>Client Portal ?</span>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -61,6 +61,6 @@ const InvoicingScreen = ({ regionFilter = "all", divisionFilter = { Water: true,
 );
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// APP â€” Collapsible sidebar, North/South + Division filters, new hierarchy
+// APP ? Collapsible sidebar, North/South + Division filters, new hierarchy
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 export default InvoicingScreen;

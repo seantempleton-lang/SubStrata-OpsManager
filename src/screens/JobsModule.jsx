@@ -1,6 +1,6 @@
 ﻿import React, { useState } from "react";
-import { COLORS, statusConfig, JOBS, icons, fmt } from "../appData.js";
-import { Icon, StatusBadge, DivisionBadge } from "../components/ui.jsx";
+import { COLORS, statusConfig, JOBS, TIMESHEETS, TS_STATUS_CFG, icons, fmt, pct } from "../appData.js";
+import { Icon, StatusBadge, DivisionBadge, ProgressBar } from "../components/ui.jsx";
 const JobsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
   const [filter, setFilter] = useState("all");
   const [divFilter, setDivFilter] = useState("all");
@@ -86,7 +86,7 @@ const JobsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water
                       </div>
                       <ProgressBar value={job.invoiced} max={job.contractValue} color={job.division === "Water" ? COLORS.blue : COLORS.teal} />
                     </div>
-                  ) : <span style={{ fontSize: 12, color: COLORS.textMuted }}>â€”</span>}
+                  ) : <span style={{ fontSize: 12, color: COLORS.textMuted }}>?</span>}
                 </td>
               </tr>
             ))}
@@ -102,10 +102,25 @@ const JobDetailScreen = ({ job, onBack }) => {
   const [tab, setTab] = useState("overview");
   const notes = [
     { author: "Craig Tait", date: "10 Mar 2026 14:32", type: "general", text: "Completed 3rd drill run today. Down to 42m, groundwater encountered at 38m. Good flow rate. Weather clear." },
-    { author: "Sean Templeton", date: "8 Mar 2026 09:15", type: "milestone", text: "Casing order confirmed with supplier â€” delivery expected 12 March." },
-    { author: "Craig Tait", date: "5 Mar 2026 17:01", type: "general", text: "Slight delay â€” drill bit replaced after hitting cobble layer at 18m. Now using tri-cone for this formation." },
+    { author: "Sean Templeton", date: "8 Mar 2026 09:15", type: "milestone", text: "Casing order confirmed with supplier ? delivery expected 12 March." },
+    { author: "Craig Tait", date: "5 Mar 2026 17:01", type: "general", text: "Slight delay ? drill bit replaced after hitting cobble layer at 18m. Now using tri-cone for this formation." },
   ];
   const noteTypeColors = { general: COLORS.textMuted, milestone: COLORS.teal, issue: COLORS.red, safety: COLORS.amber };
+  const relatedTimesheets = TIMESHEETS
+    .map((timesheet) => {
+      const matchingEntries = timesheet.days.flatMap((day) =>
+        day.entries
+          .filter((entry) => entry.jobId === job.id)
+          .map((entry) => ({ ...entry, date: day.date, overnight: day.overnight }))
+      );
+
+      return {
+        ...timesheet,
+        matchingEntries,
+        jobHours: matchingEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0),
+      };
+    })
+    .filter((timesheet) => timesheet.matchingEntries.length > 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -138,7 +153,7 @@ const JobDetailScreen = ({ job, onBack }) => {
               {job.startDate && (
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <Icon d={icons.calendar} size={13} color={COLORS.textMuted} />
-                  <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{job.startDate} â†’ {job.endDate || "TBC"}</span>
+                  <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{job.startDate} ? {job.endDate || "TBC"}</span>
                 </div>
               )}
             </div>
@@ -185,10 +200,10 @@ const JobDetailScreen = ({ job, onBack }) => {
               ["Job Type", job.type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())],
               ["Division", job.division],
               ["Region", job.region],
-              ["Project Manager", job.manager || "â€”"],
+              ["Project Manager", job.manager || "?"],
               ["Site Supervisor", job.supervisor || "Not assigned"],
               ["Client PO Ref", "SDC-PO-2026-114"],
-              ["SharePoint Folder", job.id + " â€” " + job.title],
+              ["SharePoint Folder", job.id + " ? " + job.title],
             ].map(([label, val]) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${COLORS.border}` }}>
                 <span style={{ fontSize: 13, color: COLORS.textSecondary, fontWeight: 500 }}>{label}</span>
@@ -213,7 +228,7 @@ const JobDetailScreen = ({ job, onBack }) => {
             </div>
             <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "16px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>Equipment</h3>
-              {[{ name: "Rig 3 â€” Schramm T64", type: "Drill Rig" }, { name: "Support Truck â€” 4WD", type: "Support" }].map(eq => (
+              {[{ name: "Rig 3 ? Schramm T64", type: "Drill Rig" }, { name: "Support Truck ? 4WD", type: "Support" }].map(eq => (
                 <div key={eq.name} style={{ padding: "8px 0", borderBottom: `1px solid ${COLORS.border}` }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>{eq.name}</div>
                   <div style={{ fontSize: 11, color: COLORS.textMuted }}>{eq.type}</div>
@@ -250,19 +265,45 @@ const JobDetailScreen = ({ job, onBack }) => {
 
       {tab === "timesheets" && (
         <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <p style={{ color: COLORS.textSecondary, fontSize: 13 }}>Timesheet entries charged to this job will appear here.</p>
-          {TIMESHEETS.filter(t => t.jobs.includes(job.id)).map(ts => (
-            <div key={ts.id} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${COLORS.border}` }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>{ts.user}</div>
-                <div style={{ fontSize: 11, color: COLORS.textMuted }}>{ts.week}</div>
+          <p style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 0 }}>
+            Timesheet entries charged to this job are grouped by submitted week below.
+          </p>
+          {relatedTimesheets.length === 0 && (
+            <div style={{ fontSize: 13, color: COLORS.textMuted, padding: "12px 0" }}>No timesheets have been linked to this job yet.</div>
+          )}
+          {relatedTimesheets.map((timesheet) => {
+            const statusMeta = TS_STATUS_CFG[timesheet.status] || { label: timesheet.status, color: COLORS.textMuted, bg: COLORS.bg };
+            return (
+              <div key={timesheet.id} style={{ padding: "12px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>{timesheet.user}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted }}>Week starting {timesheet.weekStart}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.teal }}>{timesheet.jobHours}h</div>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, color: statusMeta.color, background: statusMeta.bg }}>
+                      {statusMeta.label}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {timesheet.matchingEntries.map((entry, index) => (
+                    <div key={`${timesheet.id}-${entry.date}-${index}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}>
+                      <div>
+                        <div style={{ color: COLORS.textPrimary, fontWeight: 600 }}>{entry.date}</div>
+                        <div style={{ color: COLORS.textMuted }}>
+                          {entry.notes || "No notes provided"}
+                          {entry.overnight ? " • Overnight" : ""}
+                        </div>
+                      </div>
+                      <div style={{ color: COLORS.textSecondary, fontWeight: 700 }}>{entry.hours}h</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.teal }}>{ts.hours}h</div>
-                <StatusBadge status={ts.status === "submitted" ? "quoted" : ts.status === "approved" ? "active" : "enquiry"} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -290,7 +331,7 @@ const JobDetailScreen = ({ job, onBack }) => {
 
 // â”€â”€ Timesheets Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// TIMESHEETS MODULE â€” Full rebuild
+// TIMESHEETS MODULE ? Full rebuild
 // Dual-mode: Desktop manager view + Mobile field entry view
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
@@ -317,7 +358,7 @@ const NewJobScreen = ({ onBack }) => {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ gridColumn: "1/-1" }}>
             <label style={labelStyle}>Job Title *</label>
-            <input value={form.title} onChange={e=>set("title",e.target.value)} placeholder="e.g. Bore Installation â€” Station Road Farm" style={fieldStyle} />
+            <input value={form.title} onChange={e=>set("title",e.target.value)} placeholder="e.g. Bore Installation ? Station Road Farm" style={fieldStyle} />
           </div>
           <div>
             <label style={labelStyle}>Client *</label>

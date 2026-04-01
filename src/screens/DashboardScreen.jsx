@@ -16,7 +16,7 @@ const DashboardScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>Good morning, Sean</h1>
-          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Wednesday, 11 March 2026 â€” here's what's happening today</p>
+          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Wednesday, 11 March 2026 ? here's what's happening today</p>
           {(regionFilter !== "all" || !divisionFilter.Water || !divisionFilter.Geotech) && (
             <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
               {regionFilter !== "all" && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 10, color: COLORS.amber, background: COLORS.amber + "20", border: `1px solid ${COLORS.amber}40` }}>Region: {regionFilter}</span>}
@@ -36,7 +36,7 @@ const DashboardScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
           {overdueInvoices.map(inv => (
             <div key={inv.id} onClick={() => onNavigate("finance")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, cursor: "pointer" }}>
               <Icon d={icons.alert} size={15} color={COLORS.red} />
-              <span style={{ fontSize: 13, color: "#991B1B" }}>Overdue invoice {inv.id} â€” {inv.client} Â· {fmt(inv.amount)} was due {inv.dueDate}</span>
+              <span style={{ fontSize: 13, color: "#991B1B" }}>Overdue invoice {inv.id} ? {inv.client} ? {fmt(inv.amount)} was due {inv.dueDate}</span>
               <Icon d={icons.chevronRight} size={13} color="#991B1B" style={{ marginLeft: "auto" }} />
             </div>
           ))}
@@ -64,7 +64,7 @@ const DashboardScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
         <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.textPrimary }}>Active Jobs</span>
-            <button onClick={() => onNavigate("jobs")} style={{ fontSize: 12, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View all â†’</button>
+            <button onClick={() => onNavigate("jobs")} style={{ fontSize: 12, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View all ?</button>
           </div>
           <div>
             {filteredJOBS.filter(j => ["active","approved"].includes(j.status)).map((job, i) => (
@@ -80,9 +80,9 @@ const DashboardScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
                     <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "monospace" }}>{job.id}</span>
-                    <span style={{ color: COLORS.border }}>Â·</span>
+                    <span style={{ color: COLORS.border }}>?</span>
                     <span style={{ fontSize: 11, color: COLORS.textMuted }}>{job.client}</span>
-                    <span style={{ color: COLORS.border }}>Â·</span>
+                    <span style={{ color: COLORS.border }}>?</span>
                     <span style={{ fontSize: 11, color: COLORS.textMuted }}>{job.region}</span>
                   </div>
                 </div>

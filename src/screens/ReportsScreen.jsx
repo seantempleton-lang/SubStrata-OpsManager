@@ -111,7 +111,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
           </ReportCard>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <ReportCard title="Division Split â€” Contract Value">
+          <ReportCard title="Division Split ? Contract Value">
             <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
               <DonutChart segments={[
                 { value: filteredJobs.filter(j=>j.division==="Water").reduce((s,j)=>s+(j.contractValue||0),0), color: COLORS.blue },
@@ -192,16 +192,16 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
                     <td style={{ padding: "10px 12px", borderBottom: `1px solid ${COLORS.border}` }}><DivisionBadge div={r.division} /></td>
                     {[r.contractValue, r.invoiced, r.subcontractorCosts, r.labourCosts, r.otherCosts, r.totalCost].map((v, vi) => (
                       <td key={vi} style={{ padding: "10px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, fontFamily: "monospace", color: COLORS.textPrimary }}>
-                        {v > 0 ? `$${v.toLocaleString()}` : <span style={{ color: COLORS.textMuted }}>â€”</span>}
+                        {v > 0 ? `$${v.toLocaleString()}` : <span style={{ color: COLORS.textMuted }}>?</span>}
                       </td>
                     ))}
                     <td style={{ padding: "10px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: r.grossProfit >= 0 ? COLORS.green : COLORS.red }}>
-                      {r.invoiced > 0 ? `$${r.grossProfit.toLocaleString()}` : <span style={{ color: COLORS.textMuted }}>â€”</span>}
+                      {r.invoiced > 0 ? `$${r.grossProfit.toLocaleString()}` : <span style={{ color: COLORS.textMuted }}>?</span>}
                     </td>
                     <td style={{ padding: "10px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right" }}>
                       {r.margin != null ? (
                         <span style={{ fontSize: 12, fontWeight: 800, color: r.margin >= 30 ? COLORS.green : r.margin >= 15 ? COLORS.amber : COLORS.red }}>{r.margin}%</span>
-                      ) : <span style={{ color: COLORS.textMuted, fontSize: 12 }}>â€”</span>}
+                      ) : <span style={{ color: COLORS.textMuted, fontSize: 12 }}>?</span>}
                     </td>
                   </tr>
                 ))}
@@ -268,7 +268,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <div>
                     <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.textPrimary }}>{rd.rig.name}</span>
-                    <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: 8 }}>{rd.rig.region} Â· {rd.rig.category}</span>
+                    <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: 8 }}>{rd.rig.region} ? {rd.rig.category}</span>
                   </div>
                   <span style={{ fontSize: 14, fontWeight: 800, color: rd.utilPct >= 60 ? COLORS.green : rd.utilPct >= 30 ? COLORS.amber : COLORS.red }}>{rd.utilPct}%</span>
                 </div>
@@ -291,7 +291,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
         </ReportCard>
         <ReportCard title="Utilisation Rate Comparison">
           <BarChart
-            data={rigData.map(rd => ({ label: rd.rig.name.split(" â€” ")[0], value: rd.utilPct }))}
+            data={rigData.map(rd => ({ label: rd.rig.name.split(" ? ")[0], value: rd.utilPct }))}
             color={(d) => d.value >= 60 ? COLORS.green : d.value >= 30 ? COLORS.amber : COLORS.red}
             height={140}
           />
@@ -324,7 +324,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
           <StatCard label="Win Rate" value={`${winRate}%`} sub="Approved vs sent" color={winRate >= 50 ? COLORS.green : COLORS.orange} accent={COLORS.amber} />
         </div>
 
-        <ReportCard title="Estimate Funnel â€” Value by Stage">
+        <ReportCard title="Estimate Funnel ? Value by Stage">
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {stageData.map((sd, i) => {
               const cfg = estimateStatusConfig[sd.status];
@@ -395,8 +395,8 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
 
     const buckets = [
       { key: "current", label: "Current", color: COLORS.green },
-      { key: "1-30",    label: "1â€“30 days", color: COLORS.amber },
-      { key: "31-60",   label: "31â€“60 days", color: COLORS.orange },
+      { key: "1-30",    label: "1?30 days", color: COLORS.amber },
+      { key: "31-60",   label: "31?60 days", color: COLORS.orange },
       { key: "61+",     label: "61+ days", color: COLORS.red },
     ];
 
@@ -538,7 +538,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
                     <td style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, fontSize: 11, color: COLORS.textMuted }}>{p.role}</td>
                     {weeks.map(w => {
                       const entry = inRange.find(t => t.user === p.user && t.week === w);
-                      return <td key={w} style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, fontFamily: "monospace", color: entry ? COLORS.textPrimary : COLORS.textMuted }}>{entry ? entry.hours : "â€”"}</td>;
+                      return <td key={w} style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, fontFamily: "monospace", color: entry ? COLORS.textPrimary : COLORS.textMuted }}>{entry ? entry.hours : "?"}</td>;
                     })}
                     <td style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 13, fontWeight: 800, color: COLORS.textPrimary, fontFamily: "monospace" }}>{p.totalHours}</td>
                   </tr>
@@ -608,7 +608,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
           ))}
         </div>
 
-        <ReportCard title="Division Comparison â€” Revenue vs Costs vs Profit">
+        <ReportCard title="Division Comparison ? Revenue vs Costs vs Profit">
           <div style={{ display: "flex", gap: 40, justifyContent: "center", paddingTop: 8 }}>
             {divData.map(d => (
               <div key={d.div} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
@@ -656,9 +656,9 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
               ].map((row, i) => (
                 <tr key={row.label} style={{ background: row.bold ? COLORS.bg : "transparent" }}>
                   <td style={{ padding: "9px 16px", borderBottom: `1px solid ${COLORS.border}`, fontSize: 13, fontWeight: row.bold ? 700 : 500, color: COLORS.textSecondary }}>{row.label}</td>
-                  {[row.water, row.geo, row.isStr ? "â€”" : row.water + row.geo].map((v, vi) => {
+                  {[row.water, row.geo, row.isStr ? "?" : row.water + row.geo].map((v, vi) => {
                     const isTotal = vi === 2 && !row.isStr;
-                    const total = isTotal ? (typeof row.water === "number" ? row.water + row.geo : "â€”") : v;
+                    const total = isTotal ? (typeof row.water === "number" ? row.water + row.geo : "?") : v;
                     const display = row.isStr ? (vi === 2 ? `${Math.round(((divData[0].grossProfit + divData[1].grossProfit) / (divData[0].revenue + divData[1].revenue)) * 100)}%` : v) : (typeof total === "number" ? `$${total.toLocaleString()}` : total);
                     const color = row.bold && typeof total === "number" ? (total >= 0 ? COLORS.green : COLORS.red) : COLORS.textPrimary;
                     return <td key={vi} style={{ padding: "9px 16px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 13, fontFamily: row.isStr ? "inherit" : "monospace", fontWeight: row.bold ? 800 : 600, color }}>{display}</td>;
@@ -726,6 +726,6 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
 // MAIN APP
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// NEW MODULE STUBS â€” HSE, Personnel, Plant Inspections, Invoicing, Field Reports
+// NEW MODULE STUBS ? HSE, Personnel, Plant Inspections, Invoicing, Field Reports
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 export default ReportsScreen;

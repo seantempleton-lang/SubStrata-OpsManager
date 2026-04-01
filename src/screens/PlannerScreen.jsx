@@ -44,7 +44,7 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
     return true;
   });
 
-  // Conflict detection â€” any rig with overlapping job bars
+  // Conflict detection ? any rig with overlapping job bars
   const conflicts = [];
   filteredRigs.forEach(rig => {
     const rigBars = PLANNER_JOBS.map((pj, i) => ({ ...pj, ...jobDates[i], idx: i })).filter(pj => pj.rigId === rig.id && !pj.isDowntime);
@@ -74,9 +74,9 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>Planner</h1>
           <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>
-            Rig scheduling Â· {filteredRigs.length} rig{filteredRigs.length !== 1 ? "s" : ""} shown
-            {regionFilter !== "all" && <span style={{ color: COLORS.amber, fontWeight: 700 }}> Â· {regionFilter}</span>}
-            {conflicts.length > 0 && <span style={{ color: COLORS.red, fontWeight: 700 }}> Â· {conflicts.length} conflict{conflicts.length !== 1 ? "s" : ""} detected</span>}
+            Rig scheduling ? {filteredRigs.length} rig{filteredRigs.length !== 1 ? "s" : ""} shown
+            {regionFilter !== "all" && <span style={{ color: COLORS.amber, fontWeight: 700 }}> ? {regionFilter}</span>}
+            {conflicts.length > 0 && <span style={{ color: COLORS.red, fontWeight: 700 }}> ? {conflicts.length} conflict{conflicts.length !== 1 ? "s" : ""} detected</span>}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -103,12 +103,12 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
       {/* Conflict alerts */}
       {conflicts.length > 0 && (
         <div style={{ background: COLORS.redLight, border: `1px solid ${COLORS.red}30`, borderRadius: 10, padding: "10px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.red, marginBottom: 2 }}>âš  Resource Conflicts Detected</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.red, marginBottom: 2 }}>? Resource Conflicts Detected</div>
           {conflicts.map((c, i) => {
             const rig = RIGS.find(r => r.id === c.rigId);
             return (
               <div key={i} style={{ fontSize: 12, color: COLORS.red }}>
-                {rig?.name.split(" â€” ")[0]}: jobs <strong>{c.jobA}</strong> and <strong>{c.jobB}</strong> overlap â€” adjust dates below
+                {rig?.name.split(" ? ")[0]}: jobs <strong>{c.jobA}</strong> and <strong>{c.jobB}</strong> overlap ? adjust dates below
               </div>
             );
           })}
@@ -149,7 +149,7 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
                       </div>
                     );
                   })}
-                  {/* Day lines â€” weekend shading */}
+                  {/* Day lines ? weekend shading */}
                   {Array.from({ length: totalDays }, (_, di) => {
                     const d = addDays(toDateStr(viewStart), di);
                     const dow = d.getDay();
@@ -174,8 +174,8 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
                           <Icon d="M12 2L8 6H4v4l-2 2v8h20v-8l-2-2V6h-4L12 2z M8 14h8 M12 6v8" size={14} color={COLORS.amber} />
                         </div>
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textPrimary }}>{rig.name.split(" â€” ")[0]}</div>
-                          <div style={{ fontSize: 10, color: COLORS.textMuted }}>{rig.name.split(" â€” ")[1]}</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textPrimary }}>{rig.name.split(" ? ")[0]}</div>
+                          <div style={{ fontSize: 10, color: COLORS.textMuted }}>{rig.name.split(" ? ")[1]}</div>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -271,7 +271,7 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
               return new Date(monthStart.getFullYear(), monthStart.getMonth(), dayNum);
             });
             const monthBars = filteredRigs.flatMap(rig =>
-              PLANNER_JOBS.map((pj, i) => ({ ...pj, ...jobDates[i], rigName: rig.name.split(" â€” ")[0] }))
+              PLANNER_JOBS.map((pj, i) => ({ ...pj, ...jobDates[i], rigName: rig.name.split(" ? ")[0] }))
                 .filter(pj => pj.rigId === rig.id && new Date(pj.start) <= monthEnd && new Date(pj.end) >= monthStart)
             );
 
@@ -321,7 +321,7 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
           <div style={{ fontWeight: 800, fontSize: 13, color: COLORS.amber, marginBottom: 4 }}>{tooltip.job.jobId}</div>
           <div style={{ fontWeight: 600, marginBottom: 2 }}>{tooltip.job.client}</div>
           <div style={{ color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>{tooltip.job.site}</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{tooltip.job.start} â†’ {tooltip.job.end}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{tooltip.job.start} ? {tooltip.job.end}</div>
           {tooltip.job.personnel?.length > 0 && (
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 6, marginTop: 6 }}>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 3, textTransform: "uppercase" }}>Personnel</div>
@@ -362,7 +362,7 @@ const PlannerScreen = ({ regionFilter = "all", divisionFilter = { Water: true, G
         return (
           <div style={{ background: COLORS.white, borderRadius: 12, border: `2px solid ${COLORS.amber}`, padding: "16px 20px", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ fontWeight: 700, color: COLORS.textPrimary, fontSize: 13 }}>
-              {pj.isDowntime ? pj.label : `${pj.jobId} â€” ${pj.client}`}
+              {pj.isDowntime ? pj.label : `${pj.jobId} ? ${pj.client}`}
             </div>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
               <div>

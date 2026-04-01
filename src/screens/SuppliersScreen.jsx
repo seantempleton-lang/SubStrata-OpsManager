@@ -110,7 +110,7 @@ const APReconciliationTab = () => {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                       <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: COLORS.navy }}>{inv.id}</span>
-                      <span style={{ fontSize: 11, color: COLORS.textMuted }}>Â·</span>
+                      <span style={{ fontSize: 11, color: COLORS.textMuted }}>?</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.textSecondary }}>{inv.supplierName}</span>
                       <span style={{ fontFamily: "monospace", fontSize: 10, color: COLORS.textMuted, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 4, padding: "1px 5px" }}>{inv.supplierRef}</span>
                     </div>
@@ -136,7 +136,7 @@ const APReconciliationTab = () => {
                     <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>PO: {inv.poId}</div>
                   </div>
                   <div style={{ fontSize: 18, color: hasVariance(inv) ? COLORS.orange : COLORS.green, fontWeight: 800 }}>
-                    {hasVariance(inv) ? "â‰ " : "="}
+                    {hasVariance(inv) ? "?" : "="}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>Invoice Amount</div>
@@ -163,7 +163,7 @@ const APReconciliationTab = () => {
                 {/* Notes */}
                 {inv.notes && (
                   <div style={{ marginTop: 8, padding: "7px 10px", background: vari > 0 ? COLORS.redLight : COLORS.amberLight, borderRadius: 7, fontSize: 11, color: vari > 0 ? "#991B1B" : "#92400E", display: "flex", gap: 6 }}>
-                    <span style={{ flexShrink: 0 }}>âš </span>
+                    <span style={{ flexShrink: 0 }}>?</span>
                     <span>{inv.notes}</span>
                   </div>
                 )}
@@ -171,12 +171,12 @@ const APReconciliationTab = () => {
                 {/* Approval info */}
                 {(inv.approvedBy || inv.paidDate) && (
                   <div style={{ marginTop: 8, display: "flex", gap: 16 }}>
-                    {inv.approvedBy && <span style={{ fontSize: 11, color: COLORS.textMuted }}>âœ“ Approved by <b style={{ color: COLORS.textSecondary }}>{inv.approvedBy}</b> on {inv.approvedDate}</span>}
-                    {inv.paidDate && <span style={{ fontSize: 11, color: COLORS.green }}>âœ“ Paid {inv.paidDate}</span>}
+                    {inv.approvedBy && <span style={{ fontSize: 11, color: COLORS.textMuted }}>? Approved by <b style={{ color: COLORS.textSecondary }}>{inv.approvedBy}</b> on {inv.approvedDate}</span>}
+                    {inv.paidDate && <span style={{ fontSize: 11, color: COLORS.green }}>? Paid {inv.paidDate}</span>}
                   </div>
                 )}
 
-                {/* Action buttons â€” show when selected and actionable */}
+                {/* Action buttons ? show when selected and actionable */}
                 {isSelected && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${COLORS.border}`, display: "flex", gap: 8, justifyContent: "flex-end" }}>
                     {inv.status === "pending_review" && (
@@ -187,7 +187,7 @@ const APReconciliationTab = () => {
                         </button>
                         <button onClick={e => { e.stopPropagation(); setConfirmAction({ id: inv.id, action: "approve" }); }}
                           style={{ padding: "8px 16px", background: COLORS.green, border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.white, cursor: "pointer" }}>
-                          âœ“ Approve Invoice
+                          ? Approve Invoice
                         </button>
                       </>
                     )}
@@ -254,7 +254,7 @@ const APReconciliationTab = () => {
                 </button>
                 <button onClick={() => isApprove ? handleApprove(inv.id) : isDispute ? handleDispute(inv.id) : handleMarkPaid(inv.id)}
                   style={{ padding: "9px 20px", background: isApprove ? COLORS.green : isDispute ? COLORS.red : COLORS.teal, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, color: COLORS.white, cursor: "pointer" }}>
-                  {isApprove ? "âœ“ Confirm Approval" : isDispute ? "Raise Dispute" : "Confirm Payment"}
+                  {isApprove ? "? Confirm Approval" : isDispute ? "Raise Dispute" : "Confirm Payment"}
                 </button>
               </div>
             </div>
@@ -379,7 +379,7 @@ const SuppliersScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
                   ["Contact", supplier.contact],
                   ["Email", supplier.email],
                   ["Phone", supplier.phone],
-                  ["Mobile", supplier.mobile || "â€”"],
+                  ["Mobile", supplier.mobile || "?"],
                   ["Address", supplier.address],
                   ["Payment Terms", `${supplier.paymentTerms} days`],
                 ].map(([label, val]) => (

@@ -112,7 +112,7 @@ const EstimatesScreen = ({ onNavigate, estimates = ESTIMATES }) => {
                   </td>
                   <td style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}`, maxWidth: 260 }}>
                     <div style={{ fontWeight: 600, fontSize: 13, color: COLORS.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{est.title}</div>
-                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{est.client} Â· {est.siteAddress}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{est.client} ? {est.siteAddress}</div>
                   </td>
                   <td style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}` }}><DivisionBadge div={est.division} /></td>
                   <td style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}`, fontSize: 12, color: COLORS.textSecondary, whiteSpace: "nowrap" }}>{est.date}</td>
@@ -125,7 +125,7 @@ const EstimatesScreen = ({ onNavigate, estimates = ESTIMATES }) => {
                     </span>
                   </td>
                   <td style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
-                    <button onClick={e => { e.stopPropagation(); onNavigate("estimatedetail", est); }} style={{ fontSize: 11, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View â†’</button>
+                    <button onClick={e => { e.stopPropagation(); onNavigate("estimatedetail", est); }} style={{ fontSize: 11, color: COLORS.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View ?</button>
                   </td>
                 </tr>
               );
@@ -178,11 +178,11 @@ const EstimateDetailScreen = ({ estimate, onBack, onNavigate }) => {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <Icon d={icons.user} size={13} color={COLORS.textMuted} />
-                <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{estimate.contact} Â· {estimate.contactMobile}</span>
+                <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{estimate.contact} ? {estimate.contactMobile}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <Icon d={icons.calendar} size={13} color={COLORS.textMuted} />
-                <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{estimate.date} Â· Valid until {estimate.validUntil}</span>
+                <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{estimate.date} ? Valid until {estimate.validUntil}</span>
               </div>
             </div>
           </div>
@@ -248,7 +248,9 @@ const EstimateDetailScreen = ({ estimate, onBack, onNavigate }) => {
                             onMouseEnter={e => e.currentTarget.style.background = COLORS.bg}
                             onMouseLeave={e => e.currentTarget.style.background = isProvisional ? "#FAFBFC" : "transparent"}>
                             <td style={{ padding: "9px 16px", borderBottom: `1px solid ${COLORS.border}`, fontSize: 12, color: isProvisional ? COLORS.textMuted : COLORS.textPrimary, fontStyle: isProvisional ? "italic" : "normal", lineHeight: 1.4 }}>{item.description}</td>
-                            <td style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, color: isProvisional ? COLORS.textMuted : COLORS.textPrimary, fontFamily: "monospace" }}>{item.qty ?? ""}</td>
+                            <td style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, color: isProvisional ? COLORS.textMuted : COLORS.textPrimary, fontFamily: "monospace" }}>
+                              {item.qty != null ? item.qty : "—"}
+                            </td>
                             <td style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, color: COLORS.textSecondary, fontFamily: "monospace" }}>{fmtRate(item.rate)}</td>
                             <td style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "center", fontSize: 11, color: COLORS.textMuted, fontWeight: 600 }}>{item.unit}</td>
                             <td style={{ padding: "9px 16px", borderBottom: `1px solid ${COLORS.border}`, textAlign: "right", fontSize: 12, fontWeight: cost > 0 ? 700 : 400, color: cost > 0 ? COLORS.textPrimary : COLORS.textMuted, fontFamily: "monospace" }}>{fmtCost(cost)}</td>
@@ -269,7 +271,7 @@ const EstimateDetailScreen = ({ estimate, onBack, onNavigate }) => {
           })}
         </div>
 
-        {/* Right column â€” totals + notes */}
+        {/* Right column ? totals + notes */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 0 }}>
           {/* Totals */}
           <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -351,7 +353,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
 
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Switch division â†’ reload template sections (with confirm if items have been edited)
+  // Switch division ? reload template sections (with confirm if items have been edited)
   const handleDivisionChange = (div) => {
     setDivision(div);
     setSections(SECTION_TEMPLATES[div].map(s => ({
@@ -427,7 +429,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>New Estimate</h1>
-          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Auto-numbered on save Â· Draft status</p>
+          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Auto-numbered on save ? Draft status</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={onBack} style={{ padding: "9px 16px", background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 13, fontWeight: 600, color: COLORS.textPrimary, cursor: "pointer" }}>Cancel</button>
@@ -461,8 +463,8 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
                 ))}
               </div>
               {division === "Geotech"
-                ? <p style={{ margin: "6px 0 0", fontSize: 11, color: COLORS.teal }}>Geotechnical template loaded â€” CPT, boreholes, specialised testing</p>
-                : <p style={{ margin: "6px 0 0", fontSize: 11, color: COLORS.blue }}>Water template loaded â€” drilling, casing, installations</p>}
+                ? <p style={{ margin: "6px 0 0", fontSize: 11, color: COLORS.teal }}>Geotechnical template loaded ? CPT, boreholes, specialised testing</p>
+                : <p style={{ margin: "6px 0 0", fontSize: 11, color: COLORS.blue }}>Water template loaded ? drilling, casing, installations</p>}
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -508,7 +510,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
             <div style={{ marginTop: 14 }}>
               <label style={labelStyle}>Scope of Works</label>
               <textarea value={form.scope} onChange={e => setF("scope", e.target.value)}
-                placeholder={"Describe the scope â€” each line will appear as a separate paragraph.\ne.g. 1 x Sonic Borehole to 30mbgl with full core recovery & SPTs at 1.5m crs...\n4x CPTu/DPSH soundings to refusal."}
+                placeholder={"Describe the scope ? each line will appear as a separate paragraph.\ne.g. 1 x Sonic Borehole to 30mbgl with full core recovery & SPTs at 1.5m crs...\n4x CPTu/DPSH soundings to refusal."}
                 rows={5}
                 style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }} />
             </div>
@@ -545,7 +547,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
                   <input value={sec.title} onChange={e => updateSectionTitle(sec.id, e.target.value)}
                     style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, fontWeight: 700, color: COLORS.white, fontStyle: "italic", cursor: "text" }} />
                   <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.amber, marginRight: 8, fontFamily: "monospace" }}>
-                    {secTotal > 0 ? `$${secTotal.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "â€”"}
+                    {secTotal > 0 ? `$${secTotal.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "?"}
                   </span>
                   <button onClick={() => moveSection(sec.id, -1)} disabled={si === 0}
                     style={{ background: "none", border: "none", cursor: si === 0 ? "default" : "pointer", opacity: si === 0 ? 0.3 : 1, padding: "2px 4px", color: COLORS.textMuted }}>â–²</button>
@@ -578,7 +580,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
                             style={{ ...inputCell, fontStyle: isProvisional ? "italic" : "normal", color: isProvisional ? COLORS.textMuted : COLORS.textPrimary }} />
                           {/* Qty */}
                           <input value={item.qty} onChange={e => updateItem(sec.id, item.id, "qty", e.target.value)}
-                            placeholder="â€”" type="text" inputMode="decimal"
+                            placeholder="?" type="text" inputMode="decimal"
                             style={{ ...inputCell, textAlign: "right" }} />
                           {/* Rate */}
                           <input value={item.rate} onChange={e => updateItem(sec.id, item.id, "rate", e.target.value)}
@@ -591,7 +593,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
                           </select>
                           {/* Cost (read-only) */}
                           <div style={{ textAlign: "right", fontSize: 12, fontWeight: cost ? 700 : 400, color: cost ? COLORS.textPrimary : COLORS.textMuted, fontFamily: "monospace" }}>
-                            {cost != null ? `$${cost.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "â€”"}
+                            {cost != null ? `$${cost.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "?"}
                           </div>
                           {/* Actions */}
                           <div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
@@ -618,7 +620,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
                     <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 14px", borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em", marginRight: 16 }}>Section Subtotal</span>
                       <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.textPrimary, fontFamily: "monospace" }}>
-                        {secTotal > 0 ? `$${secTotal.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "â€”"}
+                        {secTotal > 0 ? `$${secTotal.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "?"}
                       </span>
                     </div>
                   </>
@@ -638,7 +640,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
           </div>
         </div>
 
-        {/* â”€â”€ RIGHT COLUMN â€” live totals â”€â”€ */}
+        {/* â”€â”€ RIGHT COLUMN ? live totals â”€â”€ */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 0 }}>
           {/* Totals card */}
           <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -652,7 +654,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
                   <div key={sec.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                     <span style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.4, flex: 1 }}>{sec.title}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: st > 0 ? COLORS.textPrimary : COLORS.textMuted, fontFamily: "monospace", flexShrink: 0 }}>
-                      {st > 0 ? `$${st.toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "â€”"}
+                      {st > 0 ? `$${st.toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "?"}
                     </span>
                   </div>
                 );
@@ -661,19 +663,19 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 13, color: COLORS.textSecondary, fontWeight: 600 }}>Subtotal (excl GST)</span>
                 <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.textPrimary, fontFamily: "monospace" }}>
-                  {total > 0 ? `$${total.toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "â€”"}
+                  {total > 0 ? `$${total.toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "?"}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 12, color: COLORS.textMuted }}>GST (15%)</span>
                 <span style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "monospace" }}>
-                  {gst > 0 ? `$${gst.toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "â€”"}
+                  {gst > 0 ? `$${gst.toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "?"}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", background: COLORS.navyLight, borderRadius: 8, marginTop: 4 }}>
                 <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.white }}>Total (incl GST)</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: COLORS.amber, fontFamily: "monospace" }}>
-                  {(total + gst) > 0 ? `$${(total + gst).toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "â€”"}
+                  {(total + gst) > 0 ? `$${(total + gst).toLocaleString("en-NZ", { minimumFractionDigits: 2 })}` : "?"}
                 </span>
               </div>
             </div>
@@ -683,7 +685,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
           <div style={{ background: COLORS.amberLight, border: `1px solid #FDE68A`, borderRadius: 10, padding: "12px 14px" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E", marginBottom: 4 }}>PROVISIONAL ITEMS</div>
             <p style={{ margin: 0, fontSize: 11, color: "#92400E", lineHeight: 1.6 }}>
-              Line items with <strong>no quantity</strong> are shown in italic and calculated as <strong>$0</strong> â€” they appear on the estimate as provisional/if-required items.
+              Line items with <strong>no quantity</strong> are shown in italic and calculated as <strong>$0</strong> ? they appear on the estimate as provisional/if-required items.
             </p>
           </div>
 
@@ -692,7 +694,7 @@ const NewEstimateScreen = ({ onBack, onSave }) => {
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textSecondary, marginBottom: 6 }}>TIPS</div>
             <ul style={{ margin: 0, paddingLeft: 14, display: "flex", flexDirection: "column", gap: 5 }}>
               {[
-                "Leave Qty blank â†’ provisional/if required line",
+                "Leave Qty blank ? provisional/if required line",
                 "Click section title to rename it",
                 "â–²â–¼ arrows reorder sections and items",
                 "Switching division reloads the rate schedule",
