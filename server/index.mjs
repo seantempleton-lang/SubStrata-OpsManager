@@ -25,6 +25,10 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/health.txt", (_req, res) => {
+  res.type("text/plain").send("ok");
+});
+
 app.get("/api/bootstrap", async (_req, res) => {
   try {
     const data = await getBootstrapData();
@@ -68,7 +72,7 @@ app.patch("/api/supplier-invoices/:id/status", async (req, res) => {
 if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
 
-  app.get("*", (req, res, next) => {
+  app.use((req, res, next) => {
     if (req.path.startsWith("/api/")) {
       next();
       return;
