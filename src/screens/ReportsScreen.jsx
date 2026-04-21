@@ -2,15 +2,9 @@
 import {
   COLORS,
   statusConfig,
-  JOBS,
-  ESTIMATES,
-  EQUIPMENT,
   icons,
-  INVOICES,
   estimateStatusConfig,
   calcEstimateTotal,
-  JOB_COSTS,
-  TIMESHEET_DETAIL,
 } from "../appData.js";
 import {
   DivisionBadge,
@@ -22,7 +16,7 @@ import {
   DateRangePicker,
   Icon,
 } from "../components/ui.jsx";
-const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+const ReportsScreen = ({ estimates = [], jobs = [], equipment = [], invoices = [], reporting = { jobCosts: {}, timesheetDetail: [] }, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
   const [activeReport, setActiveReport] = useState("overview");
   const [divFilter, setDivFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("2026-01-01");
@@ -41,7 +35,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
   ];
 
   // â”€â”€ Filtered jobs for date range â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const filteredJobs = useMemo(() => JOBS.filter(j => {
+  const filteredJobs = useMemo(() => jobs.filter(j => {
     if (regionFilter !== "all" && j.region !== regionFilter) return false;
     if (!divisionFilter[j.division]) return false;
     if (divFilter !== "all" && j.division !== divFilter) return false;
@@ -61,11 +55,11 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
   // â”€â”€ 1. EXECUTIVE OVERVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const OverviewReport = () => {
     const totalContracted  = filteredJobs.reduce((s, j) => s + (j.contractValue || 0), 0);
-    const totalInvoiced    = INVOICES.reduce((s, i) => s + i.amount, 0);
-    const totalOutstanding = INVOICES.filter(i => i.status !== "paid").reduce((s, i) => s + i.amount, 0);
-    const totalOverdue     = INVOICES.filter(i => i.status === "overdue").reduce((s, i) => s + i.amount, 0);
-    const activeJobs       = filteredJobs.filter(j => j.status === "active").length;
-    const rigUtil          = Math.round((EQUIPMENT.filter(e => e.type === "rig" && e.status === "deployed").length / EQUIPMENT.filter(e => e.type === "rig").length) * 100);
+  const totalInvoiced    = invoices.reduce((s, i) => s + i.amount, 0);
+  const totalOutstanding = invoices.filter(i => i.status !== "paid").reduce((s, i) => s + i.amount, 0);
+  const totalOverdue     = invoices.filter(i => i.status === "overdue").reduce((s, i) => s + i.amount, 0);
+  const activeJobs       = filteredJobs.filter(j => j.status === "active").length;
+  const rigUtil          = Math.round(((equipment.filter(e => e.type === "rig" && e.status === "deployed").length) / Math.max(equipment.filter(e => e.type === "rig").length, 1)) * 100);
 
     const jobsByStatus = Object.entries(
       filteredJobs.reduce((acc, j) => { acc[j.status] = (acc[j.status] || 0) + 1; return acc; }, {})
@@ -152,7 +146,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
   // â”€â”€ 2. JOB PROFITABILITY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const ProfitabilityReport = () => {
     const rows = filteredJobs.filter(j => j.contractValue).map(j => {
-      const costs = JOB_COSTS[j.id] || { subcontractorCosts: 0, labourCosts: 0, otherCosts: 0 };
+      const costs = reporting.jobCosts[j.id] || { subcontractorCosts: 0, labourCosts: 0, otherCosts: 0 };
       const totalCost = costs.subcontractorCosts + costs.labourCosts + costs.otherCosts;
       const grossProfit = j.invoiced - totalCost;
       const margin = j.invoiced > 0 ? Math.round((grossProfit / j.invoiced) * 100) : null;
@@ -386,7 +380,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
   // â”€â”€ 5. AGED DEBTORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const AgedDebtorsReport = () => {
     const today = new Date("2026-03-11");
-    const enriched = INVOICES.filter(i => i.status !== "paid").map(i => {
+    const enriched = invoices.filter(i => i.status !== "paid").map(i => {
       const due = new Date(i.dueDate);
       const age = Math.round((today - due) / 86400000);
       const bucket = age <= 0 ? "current" : age <= 30 ? "1-30" : age <= 60 ? "31-60" : "61+";
@@ -471,7 +465,7 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
 
   // â”€â”€ 6. TIMESHEET SUMMARY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const TimesheetSummaryReport = () => {
-    const inRange = TIMESHEET_DETAIL.filter(t => t.week >= dateFrom && t.week <= dateTo);
+    const inRange = reporting.timesheetDetail.filter(t => t.week >= dateFrom && t.week <= dateTo);
 
     const byPerson = Object.values(inRange.reduce((acc, t) => {
       if (!acc[t.user]) acc[t.user] = { user: t.user, role: t.role, totalHours: 0, jobs: {} };
@@ -509,11 +503,11 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
           <ReportCard title="Hours by Job">
             <HBarChart
               data={byJob.map(j => {
-                const job = JOBS.find(jb => jb.id === j.job);
+              const job = jobs.find(jb => jb.id === j.job);
                 return { label: j.job + (job ? ` (${job.client.split(" ")[0]})` : ""), value: j.totalHours, display: `${j.totalHours}h`, pct: null };
               })}
               color={(d, i) => {
-                const job = JOBS.find(j => j.id === byJob[i]?.job);
+                const job = jobs.find(j => j.id === byJob[i]?.job);
                 return job?.division === "Geotech" ? COLORS.teal : COLORS.blue;
               }}
             />
@@ -555,17 +549,17 @@ const ReportsScreen = ({ estimates = ESTIMATES, regionFilter = "all", divisionFi
   const DivisionPnLReport = () => {
     const divs = ["Water", "Geotech"];
     const divData = divs.map(div => {
-      const jobs = JOBS.filter(j => j.division === div);
-      const revenue = INVOICES.filter(i => jobs.some(j => j.id === i.job)).reduce((s, i) => s + i.amount, 0);
-      const subCosts = jobs.reduce((s, j) => s + (JOB_COSTS[j.id]?.subcontractorCosts || 0), 0);
-      const labourCosts = jobs.reduce((s, j) => s + (JOB_COSTS[j.id]?.labourCosts || 0), 0);
-      const otherCosts = jobs.reduce((s, j) => s + (JOB_COSTS[j.id]?.otherCosts || 0), 0);
+      const jobsForDivision = jobs.filter(j => j.division === div);
+      const revenue = invoices.filter(i => jobsForDivision.some(j => j.id === i.job)).reduce((s, i) => s + i.amount, 0);
+      const subCosts = jobsForDivision.reduce((s, j) => s + (reporting.jobCosts[j.id]?.subcontractorCosts || 0), 0);
+      const labourCosts = jobsForDivision.reduce((s, j) => s + (reporting.jobCosts[j.id]?.labourCosts || 0), 0);
+      const otherCosts = jobsForDivision.reduce((s, j) => s + (reporting.jobCosts[j.id]?.otherCosts || 0), 0);
       const totalCosts = subCosts + labourCosts + otherCosts;
       const grossProfit = revenue - totalCosts;
       const margin = revenue > 0 ? Math.round((grossProfit / revenue) * 100) : 0;
-      const contractValue = jobs.reduce((s, j) => s + (j.contractValue || 0), 0);
+      const contractValue = jobsForDivision.reduce((s, j) => s + (j.contractValue || 0), 0);
       const pipelineValue = filteredEstimates.filter(e => e.division === div && e.status === "sent").reduce((s, e) => s + calcEstimateTotal(e), 0);
-      return { div, jobs: jobs.length, contractValue, revenue, subCosts, labourCosts, otherCosts, totalCosts, grossProfit, margin, pipelineValue };
+      return { div, jobs: jobsForDivision.length, contractValue, revenue, subCosts, labourCosts, otherCosts, totalCosts, grossProfit, margin, pipelineValue };
     });
 
     const totals = divData.reduce((acc, d) => ({

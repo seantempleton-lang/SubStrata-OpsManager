@@ -1,12 +1,12 @@
 ﻿import React, { useState } from "react";
-import { COLORS, statusConfig, JOBS, TIMESHEETS, TS_STATUS_CFG, icons, fmt, pct } from "../appData.js";
+import { COLORS, statusConfig, TS_STATUS_CFG, entryHours, icons, fmt, pct } from "../appData.js";
 import { Icon, StatusBadge, DivisionBadge, ProgressBar } from "../components/ui.jsx";
-const JobsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+const JobsScreen = ({ jobs = [], onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
   const [filter, setFilter] = useState("all");
   const [divFilter, setDivFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const filtered = JOBS.filter(j => {
+  const filtered = jobs.filter(j => {
     if (regionFilter !== "all" && j.region !== regionFilter) return false;
     if (!divisionFilter[j.division]) return false;
     if (filter !== "all" && j.status !== filter) return false;
@@ -20,7 +20,7 @@ const JobsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>Jobs</h1>
-          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>{filtered.length} of {JOBS.length} jobs</p>
+          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>{filtered.length} of {jobs.length} jobs</p>
         </div>
         <button onClick={() => onNavigate("newjob")} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: COLORS.amber, color: COLORS.navy, border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
           <Icon d={icons.plus} size={14} color={COLORS.navy} /> New Job
@@ -58,7 +58,14 @@ const JobsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water
             </tr>
           </thead>
           <tbody>
-            {filtered.map((job, i) => (
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ padding: "24px 16px", textAlign: "center", color: COLORS.textMuted, fontSize: 13 }}>
+                  No jobs match the current filters.
+                </td>
+              </tr>
+            )}
+            {filtered.map((job) => (
               <tr key={job.id} onClick={() => onNavigate("jobdetail", job)} style={{ cursor: "pointer", transition: "background 0.1s" }}
                 onMouseEnter={e => e.currentTarget.style.background = COLORS.bg}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -86,7 +93,7 @@ const JobsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water
                       </div>
                       <ProgressBar value={job.invoiced} max={job.contractValue} color={job.division === "Water" ? COLORS.blue : COLORS.teal} />
                     </div>
-                  ) : <span style={{ fontSize: 12, color: COLORS.textMuted }}>?</span>}
+                  ) : <span style={{ fontSize: 12, color: COLORS.textMuted }}>—</span>}
                 </td>
               </tr>
             ))}
@@ -98,15 +105,15 @@ const JobsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water
 };
 
 // â”€â”€ Job Detail Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const JobDetailScreen = ({ job, onBack }) => {
+const JobDetailScreen = ({ job, timesheets = [], onBack }) => {
   const [tab, setTab] = useState("overview");
   const notes = [
     { author: "Craig Tait", date: "10 Mar 2026 14:32", type: "general", text: "Completed 3rd drill run today. Down to 42m, groundwater encountered at 38m. Good flow rate. Weather clear." },
-    { author: "Sean Templeton", date: "8 Mar 2026 09:15", type: "milestone", text: "Casing order confirmed with supplier ? delivery expected 12 March." },
-    { author: "Craig Tait", date: "5 Mar 2026 17:01", type: "general", text: "Slight delay ? drill bit replaced after hitting cobble layer at 18m. Now using tri-cone for this formation." },
+    { author: "Sean Templeton", date: "8 Mar 2026 09:15", type: "milestone", text: "Casing order confirmed with supplier — delivery expected 12 March." },
+    { author: "Craig Tait", date: "5 Mar 2026 17:01", type: "general", text: "Slight delay — drill bit replaced after hitting cobble layer at 18m. Now using tri-cone for this formation." },
   ];
   const noteTypeColors = { general: COLORS.textMuted, milestone: COLORS.teal, issue: COLORS.red, safety: COLORS.amber };
-  const relatedTimesheets = TIMESHEETS
+  const relatedTimesheets = timesheets
     .map((timesheet) => {
       const matchingEntries = timesheet.days.flatMap((day) =>
         day.entries
@@ -117,7 +124,7 @@ const JobDetailScreen = ({ job, onBack }) => {
       return {
         ...timesheet,
         matchingEntries,
-        jobHours: matchingEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0),
+        jobHours: matchingEntries.reduce((sum, entry) => sum + entryHours(entry), 0),
       };
     })
     .filter((timesheet) => timesheet.matchingEntries.length > 0);
@@ -153,7 +160,7 @@ const JobDetailScreen = ({ job, onBack }) => {
               {job.startDate && (
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <Icon d={icons.calendar} size={13} color={COLORS.textMuted} />
-                  <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{job.startDate} ? {job.endDate || "TBC"}</span>
+                  <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{job.startDate} — {job.endDate || "TBC"}</span>
                 </div>
               )}
             </div>
@@ -200,10 +207,10 @@ const JobDetailScreen = ({ job, onBack }) => {
               ["Job Type", job.type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())],
               ["Division", job.division],
               ["Region", job.region],
-              ["Project Manager", job.manager || "?"],
+              ["Project Manager", job.manager || "Unassigned"],
               ["Site Supervisor", job.supervisor || "Not assigned"],
               ["Client PO Ref", "SDC-PO-2026-114"],
-              ["SharePoint Folder", job.id + " ? " + job.title],
+              ["SharePoint Folder", `${job.id} — ${job.title}`],
             ].map(([label, val]) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${COLORS.border}` }}>
                 <span style={{ fontSize: 13, color: COLORS.textSecondary, fontWeight: 500 }}>{label}</span>
@@ -228,7 +235,7 @@ const JobDetailScreen = ({ job, onBack }) => {
             </div>
             <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "16px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>Equipment</h3>
-              {[{ name: "Rig 3 ? Schramm T64", type: "Drill Rig" }, { name: "Support Truck ? 4WD", type: "Support" }].map(eq => (
+              {[{ name: "Rig 3 — Schramm T64", type: "Drill Rig" }, { name: "Support Truck — 4WD", type: "Support" }].map(eq => (
                 <div key={eq.name} style={{ padding: "8px 0", borderBottom: `1px solid ${COLORS.border}` }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>{eq.name}</div>
                   <div style={{ fontSize: 11, color: COLORS.textMuted }}>{eq.type}</div>
@@ -297,7 +304,7 @@ const JobDetailScreen = ({ job, onBack }) => {
                           {entry.overnight ? " • Overnight" : ""}
                         </div>
                       </div>
-                      <div style={{ color: COLORS.textSecondary, fontWeight: 700 }}>{entry.hours}h</div>
+                      <div style={{ color: COLORS.textSecondary, fontWeight: 700 }}>{entryHours(entry)}h</div>
                     </div>
                   ))}
                 </div>
@@ -336,11 +343,17 @@ const JobDetailScreen = ({ job, onBack }) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
-const NewJobScreen = ({ onBack }) => {
-  const [form, setForm] = useState({ title: "", client: "", division: "Water", region: "South", type: "water_bore", status: "enquiry" });
+const NewJobScreen = ({ onBack, onSave }) => {
+  const [form, setForm] = useState({ title: "", client: "", division: "Water", region: "South", type: "water_bore", status: "enquiry", site: "" });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const fieldStyle = { width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 13, color: COLORS.textPrimary, outline: "none", boxSizing: "border-box", background: COLORS.white };
   const labelStyle = { fontSize: 12, fontWeight: 700, color: COLORS.textSecondary, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, display: "block" };
+  const canSave = form.title.trim() && form.client.trim() && form.site.trim();
+
+  const handleSave = () => {
+    if (!canSave) return;
+    onSave?.(form);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 800 }}>
@@ -381,9 +394,8 @@ const NewJobScreen = ({ onBack }) => {
           <div>
             <label style={labelStyle}>Base Location *</label>
             <select value={form.region} onChange={e=>set("region",e.target.value)} style={fieldStyle}>
-              <option>Christchurch</option>
-              <option>Southbridge</option>
-              <option>Auckland</option>
+              <option value="South">South</option>
+              <option value="North">North</option>
             </select>
           </div>
           <div>
@@ -406,7 +418,7 @@ const NewJobScreen = ({ onBack }) => {
           </div>
           <div style={{ gridColumn: "1/-1" }}>
             <label style={labelStyle}>Site Address</label>
-            <input placeholder="Physical address of drilling site" style={fieldStyle} />
+            <input value={form.site} onChange={e=>set("site", e.target.value)} placeholder="Physical address of drilling site" style={fieldStyle} />
           </div>
           <div style={{ gridColumn: "1/-1" }}>
             <label style={labelStyle}>Description / Scope</label>
@@ -415,7 +427,13 @@ const NewJobScreen = ({ onBack }) => {
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 24, paddingTop: 20, borderTop: `1px solid ${COLORS.border}` }}>
           <button onClick={onBack} style={{ padding: "10px 20px", background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 13, fontWeight: 600, color: COLORS.textPrimary, cursor: "pointer" }}>Cancel</button>
-          <button style={{ padding: "10px 24px", background: COLORS.amber, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, color: COLORS.navy, cursor: "pointer" }}>Save Job & Create SharePoint Folder</button>
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            style={{ padding: "10px 24px", background: canSave ? COLORS.amber : COLORS.border, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, color: canSave ? COLORS.navy : COLORS.textMuted, cursor: canSave ? "pointer" : "not-allowed" }}
+          >
+            Save Job & Create SharePoint Folder
+          </button>
         </div>
       </div>
     </div>

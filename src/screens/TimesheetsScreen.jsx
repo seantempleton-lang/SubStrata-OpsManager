@@ -1,12 +1,12 @@
 ﻿import React, { useState, useEffect } from "react";
 import {
   COLORS,
-  STAFF,
+  STAFF as STAFF_SEED,
   RATE_TYPES,
   LEAVE_TYPES,
   EXPENSE_TYPES,
-  TIMESHEETS,
-  JOBS,
+  TIMESHEETS as TIMESHEETS_SEED,
+  JOBS as JOBS_SEED,
   calcTsHours,
   calcTsOvernights,
   TS_STATUS_CFG,
@@ -72,7 +72,10 @@ const DayTypeBadge = ({ day }) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MANAGER VIEW ? desktop approval queue
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
+const ManagerTimesheetsView = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEED, jobs = JOBS_SEED, onViewTimesheet, tsVisible = () => true }) => {
+  const STAFF = staff;
+  const TIMESHEETS = timesheets;
+  const JOBS = jobs;
   const [filter, setFilter] = useState("pending");
   const [weekFilter, setWeekFilter] = useState("2026-03-09");
 
@@ -229,7 +232,9 @@ const ManagerTimesheetsView = ({ onViewTimesheet, tsVisible = () => true }) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TIMESHEET DETAIL ? full view of one week (used by both views)
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const TimesheetDetail = ({ ts, onBack, isMobile }) => {
+const TimesheetDetail = ({ ts, jobs = JOBS_SEED, staff = STAFF_SEED, onBack, isMobile }) => {
+  const JOBS = jobs;
+  const STAFF = staff;
   const [activeDay, setActiveDay] = useState(null);
   const weekDays = WEEK_DAYS_FROM_MONDAY(ts.weekStart);
   const cfg = TS_STATUS_CFG[ts.status] || TS_STATUS_CFG.draft;
@@ -420,7 +425,10 @@ const TimesheetDetail = ({ ts, onBack, isMobile }) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MOBILE ENTRY VIEW ? field staff time entry UI
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const MobileTimesheetEntry = ({ onBack }) => {
+const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets = TIMESHEETS_SEED, onBack }) => {
+  const JOBS = jobs;
+  const STAFF = staff;
+  const TIMESHEETS = timesheets;
   const TODAY = "2026-03-11";
   const WEEK_START = "2026-03-09"; // Mon
   const weekDays = WEEK_DAYS_FROM_MONDAY(WEEK_START);
@@ -887,7 +895,10 @@ const MobileTimesheetEntry = ({ onBack }) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MAIN TIMESHEETS SCREEN ? toggles between manager and mobile views
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const TimesheetsScreen = ({ regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+const TimesheetsScreen = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEED, jobs = JOBS_SEED, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+  const STAFF = staff;
+  const TIMESHEETS = timesheets;
+  const JOBS = jobs;
   // Global filter helper for timesheets ? filter by staff's division/region
   const tsVisible = (ts) => {
     const staff = STAFF.find(s => s.id === ts.userId);
@@ -900,11 +911,11 @@ const TimesheetsScreen = ({ regionFilter = "all", divisionFilter = { Water: true
   const [selectedTs, setSelectedTs] = useState(null);
 
   if (view === "mobile") {
-    return <MobileTimesheetEntry onBack={() => setView("manager")} />;
+    return <MobileTimesheetEntry jobs={jobs} staff={staff} timesheets={timesheets} onBack={() => setView("manager")} />;
   }
 
   if (selectedTs) {
-    return <TimesheetDetail ts={selectedTs} onBack={() => setSelectedTs(null)} isMobile={false} />;
+    return <TimesheetDetail ts={selectedTs} jobs={jobs} staff={staff} onBack={() => setSelectedTs(null)} isMobile={false} />;
   }
 
   return (
@@ -927,7 +938,7 @@ const TimesheetsScreen = ({ regionFilter = "all", divisionFilter = { Water: true
           </button>
         </div>
       </div>
-      <ManagerTimesheetsView onViewTimesheet={(ts) => setSelectedTs(ts)} tsVisible={tsVisible} />
+      <ManagerTimesheetsView staff={staff} timesheets={timesheets} jobs={jobs} onViewTimesheet={(ts) => setSelectedTs(ts)} tsVisible={tsVisible} />
     </div>
   );
 };

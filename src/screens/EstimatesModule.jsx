@@ -1,8 +1,6 @@
 ﻿import React, { useState, useMemo } from "react";
 import {
   COLORS,
-  ESTIMATES,
-  CLIENTS,
   icons,
   calcSectionTotal,
   calcEstimateTotal,
@@ -16,7 +14,7 @@ import {
   makeSection,
 } from "../appData.js";
 import { Icon, DivisionBadge } from "../components/ui.jsx";
-const EstimatesScreen = ({ onNavigate, estimates = ESTIMATES }) => {
+const EstimatesScreen = ({ onNavigate, estimates = [] }) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [divFilter, setDivFilter] = useState("all");
@@ -332,7 +330,7 @@ const EstimateDetailScreen = ({ estimate, onBack, onNavigate }) => {
 
 // â”€â”€ Default section templates drawn from the 100 Park Tce estimate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const NewEstimateScreen = ({ onBack, onSave }) => {
+const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
   const today = new Date().toISOString().slice(0, 10);
   const validUntil = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 

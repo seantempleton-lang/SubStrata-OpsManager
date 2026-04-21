@@ -1,16 +1,16 @@
 ﻿import React, { useState } from "react";
-import { COLORS, CLIENTS, icons } from "../appData.js";
+import { COLORS, icons } from "../appData.js";
 import { Icon, DivisionBadge, StatusBadge } from "../components/ui.jsx";
-const ClientsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+const ClientsScreen = ({ clients = [], jobs = [], invoices = [], onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState("all");
 
-  const industries = ["all", ...Array.from(new Set(CLIENTS.map(c => c.industry)))];
-  const filtered = CLIENTS.filter(c => {
+  const industries = ["all", ...Array.from(new Set(clients.map(c => c.industry).filter(Boolean)))];
+  const filtered = clients.filter(c => {
     if (industryFilter !== "all" && c.industry !== industryFilter) return false;
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.code.toLowerCase().includes(search.toLowerCase())) return false;
     // Region/division filter ? include client if they have at least one job matching the filter
-    const clientJobs = JOBS.filter(j => j.client === c.name);
+    const clientJobs = jobs.filter(j => j.client === c.name);
     if (clientJobs.length > 0) {
       const match = clientJobs.some(j =>
         (regionFilter === "all" || j.region === regionFilter) && divisionFilter[j.division]
@@ -50,7 +50,7 @@ const ClientsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Wa
       {/* Client Cards Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
         {filtered.map(client => {
-          const clientJobs = JOBS.filter(j => j.client === client.name);
+          const clientJobs = jobs.filter(j => j.client === client.name);
           const activeJobs = clientJobs.filter(j => j.status === "active").length;
           const totalValue = clientJobs.reduce((s, j) => s + (j.contractValue || 0), 0);
           const primaryContact = client.contacts.find(c => c.isPrimary);
@@ -123,11 +123,11 @@ const ClientsScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Wa
 };
 
 // â”€â”€ Client Detail Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const ClientDetailScreen = ({ client, onBack, onNavigate }) => {
+const ClientDetailScreen = ({ client, jobs = [], invoices = [], onBack, onNavigate }) => {
   const [tab, setTab] = useState("overview");
-  const clientJobs = JOBS.filter(j => j.client === client.name);
+  const clientJobs = jobs.filter(j => j.client === client.name);
   const totalValue = clientJobs.reduce((s, j) => s + (j.contractValue || 0), 0);
-  const totalInvoiced = INVOICES.filter(i => i.client === client.name).reduce((s, i) => s + i.amount, 0);
+  const totalInvoiced = invoices.filter(i => i.client === client.name).reduce((s, i) => s + i.amount, 0);
   const activityTypeConfig = {
     call:      { label: "Call",      color: COLORS.blue,  bg: COLORS.blueLight },
     email:     { label: "Email",     color: COLORS.teal,  bg: COLORS.tealLight },

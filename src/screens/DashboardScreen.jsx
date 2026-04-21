@@ -1,14 +1,14 @@
 ﻿import React from "react";
-import { COLORS, JOBS, INVOICES, TIMESHEETS, icons, fmt, pct } from "../appData.js";
+import { COLORS, icons, fmt, pct } from "../appData.js";
 import { Icon, StatusBadge, KpiCard, ProgressBar } from "../components/ui.jsx";
-const DashboardScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+const DashboardScreen = ({ onNavigate, jobs = [], invoices = [], timesheets = [], regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
   const gf = j => (regionFilter === "all" || j.region === regionFilter) && divisionFilter[j.division];
-  const filteredJOBS = JOBS.filter(gf);
+  const filteredJOBS = jobs.filter(gf);
   const active = filteredJOBS.filter(j => j.status === "active");
   const totalRevenue = filteredJOBS.reduce((s, j) => s + (j.contractValue || 0), 0);
   const totalInvoiced = filteredJOBS.reduce((s, j) => s + (j.invoiced || 0), 0);
-  const overdueInvoices = INVOICES.filter(i => i.status === "overdue");
-  const pendingTS = TIMESHEETS.filter(t => t.status === "submitted").length;
+  const overdueInvoices = invoices.filter(i => i.status === "overdue");
+  const pendingTS = timesheets.filter(t => t.status === "submitted").length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -141,7 +141,7 @@ const DashboardScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
               <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.textPrimary }}>Pending Approvals</span>
               <span style={{ fontSize: 11, background: COLORS.amber + "30", color: COLORS.amberDark, fontWeight: 700, borderRadius: 10, padding: "2px 8px" }}>{pendingTS}</span>
             </div>
-            {TIMESHEETS.filter(t => t.status === "submitted").map(ts => (
+            {timesheets.filter(t => t.status === "submitted").map(ts => (
               <div key={ts.id} onClick={() => onNavigate("timesheets")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${COLORS.border}`, cursor: "pointer" }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>{ts.user}</div>

@@ -1,16 +1,15 @@
 ﻿import React, { useState } from "react";
 import {
   COLORS,
-  SUPPLIERS,
   poStatusCfg,
   catColors,
-  SUPPLIER_INVOICES_INIT,
   sinvStatusCfg,
   icons,
 } from "../appData.js";
 import { Icon, DivisionBadge } from "../components/ui.jsx";
-const APReconciliationTab = () => {
-  const [invoices, setInvoices] = useState(SUPPLIER_INVOICES_INIT);
+import { useAppData } from "../data/AppDataContext.jsx";
+const APReconciliationTab = ({ invoices = [], suppliers = [], currentUserName = "Sean Templeton" }) => {
+  const { updateSupplierInvoiceStatus } = useAppData();
   const [selected, setSelected] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [confirmAction, setConfirmAction] = useState(null); // { id, action }
@@ -24,27 +23,18 @@ const APReconciliationTab = () => {
   const disputedCount  = invoices.filter(i => i.status === "disputed").length;
   const paidValue      = invoices.filter(i => i.status === "paid").reduce((s,i) => s + i.invoiceAmount, 0);
 
-  const handleApprove = (id) => {
-    setInvoices(prev => prev.map(i => i.id === id
-      ? { ...i, status: "approved", approvedBy: "Sean Templeton", approvedDate: "2026-03-11" }
-      : i
-    ));
+  const handleApprove = async (id) => {
+    await updateSupplierInvoiceStatus(id, "approved", currentUserName);
     setConfirmAction(null);
   };
 
-  const handleDispute = (id) => {
-    setInvoices(prev => prev.map(i => i.id === id
-      ? { ...i, status: "disputed" }
-      : i
-    ));
+  const handleDispute = async (id) => {
+    await updateSupplierInvoiceStatus(id, "disputed", currentUserName);
     setConfirmAction(null);
   };
 
-  const handleMarkPaid = (id) => {
-    setInvoices(prev => prev.map(i => i.id === id
-      ? { ...i, status: "paid", paidDate: "2026-03-11" }
-      : i
-    ));
+  const handleMarkPaid = async (id) => {
+    await updateSupplierInvoiceStatus(id, "paid", currentUserName);
     setConfirmAction(null);
   };
 
@@ -92,7 +82,7 @@ const APReconciliationTab = () => {
             const cfg = sinvStatusCfg[inv.status];
             const vari = variance(inv);
             const isSelected = selected === inv.id;
-            const po = SUPPLIERS.flatMap(s => s.pos).find(p => p.id === inv.poId);
+                const po = suppliers.flatMap(s => s.pos).find(p => p.id === inv.poId);
             const today = new Date("2026-03-11");
             const due = new Date(inv.dueDate);
             const daysUntilDue = Math.round((due - today) / 86400000);
@@ -265,16 +255,16 @@ const APReconciliationTab = () => {
   );
 };
 
-const SuppliersScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+const SuppliersScreen = ({ suppliers = [], supplierInvoices = [], currentUserName = "Sean Templeton", onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
   const [tab, setTab] = useState("suppliers");
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
-  const supplier = selected ? SUPPLIERS.find(s => s.id === selected) : null;
+  const supplier = selected ? suppliers.find(s => s.id === selected) : null;
 
-  const pendingApCount = SUPPLIER_INVOICES_INIT.filter(i => i.status === "pending_review").length;
+  const pendingApCount = supplierInvoices.filter(i => i.status === "pending_review").length;
 
-  const filtered = SUPPLIERS.filter(s => {
+  const filtered = suppliers.filter(s => {
     if (catFilter !== "all" && s.category !== catFilter) return false;
     if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.specialty.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -285,7 +275,7 @@ const SuppliersScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>Suppliers & Subcontractors</h1>
-          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>{SUPPLIERS.length} registered suppliers</p>
+          <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>{suppliers.length} registered suppliers</p>
         </div>
         {tab === "suppliers" && (
           <button style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: COLORS.amber, color: COLORS.navy, border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
@@ -437,7 +427,7 @@ const SuppliersScreen = ({ onNavigate, regionFilter = "all", divisionFilter = { 
       </>)}
 
       {/* â”€â”€ AP Reconciliation tab â”€â”€ */}
-      {tab === "ap" && <APReconciliationTab />}
+      {tab === "ap" && <APReconciliationTab invoices={supplierInvoices} suppliers={suppliers} currentUserName={currentUserName} />}
     </div>
   );
 };
