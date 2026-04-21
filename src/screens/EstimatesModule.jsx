@@ -135,7 +135,7 @@ const EstimatesScreen = ({ onNavigate, estimates = [] }) => {
   );
 };
 
-// â”€â”€ Estimate Detail Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Estimate detail screen
 const EstimateDetailScreen = ({ estimate, onBack, onNavigate }) => {
   const [activeSection, setActiveSection] = useState(null);
   const total = calcEstimateTotal(estimate);
@@ -328,7 +328,7 @@ const EstimateDetailScreen = ({ estimate, onBack, onNavigate }) => {
   );
 };
 
-// â”€â”€ Default section templates drawn from the 100 Park Tce estimate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Default section templates drawn from the 100 Park Tce estimate
 
 const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
   const today = new Date().toISOString().slice(0, 10);
@@ -439,7 +439,7 @@ const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20, alignItems: "start" }}>
-        {/* â”€â”€ LEFT COLUMN â”€â”€ */}
+          {/* Left column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Header fields */}
@@ -514,7 +514,7 @@ const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
             </div>
           </div>
 
-          {/* â”€â”€ SECTIONS â”€â”€ */}
+          {/* Sections */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>Line Items</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -548,11 +548,11 @@ const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
                     {secTotal > 0 ? `$${secTotal.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "?"}
                   </span>
                   <button onClick={() => moveSection(sec.id, -1)} disabled={si === 0}
-                    style={{ background: "none", border: "none", cursor: si === 0 ? "default" : "pointer", opacity: si === 0 ? 0.3 : 1, padding: "2px 4px", color: COLORS.textMuted }}>â–²</button>
+                    style={{ background: "none", border: "none", cursor: si === 0 ? "default" : "pointer", opacity: si === 0 ? 0.3 : 1, padding: "2px 4px", color: COLORS.textMuted }}>Up</button>
                   <button onClick={() => moveSection(sec.id, 1)} disabled={si === sections.length - 1}
-                    style={{ background: "none", border: "none", cursor: si === sections.length - 1 ? "default" : "pointer", opacity: si === sections.length - 1 ? 0.3 : 1, padding: "2px 4px", color: COLORS.textMuted }}>â–¼</button>
+                    style={{ background: "none", border: "none", cursor: si === sections.length - 1 ? "default" : "pointer", opacity: si === sections.length - 1 ? 0.3 : 1, padding: "2px 4px", color: COLORS.textMuted }}>Down</button>
                   <button onClick={() => removeSection(sec.id)}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 6px", color: COLORS.red, fontSize: 16, lineHeight: 1 }}>Ã—</button>
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 6px", color: COLORS.red, fontSize: 16, lineHeight: 1 }}>x</button>
                 </div>
 
                 {isOpen && (
@@ -596,11 +596,11 @@ const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
                           {/* Actions */}
                           <div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
                             <button onClick={() => moveItem(sec.id, item.id, -1)} disabled={ii === 0}
-                              style={{ background: "none", border: "none", cursor: ii === 0 ? "default" : "pointer", opacity: ii === 0 ? 0.25 : 0.6, fontSize: 11, padding: "2px 3px", color: COLORS.textMuted }}>â–²</button>
+                              style={{ background: "none", border: "none", cursor: ii === 0 ? "default" : "pointer", opacity: ii === 0 ? 0.25 : 0.6, fontSize: 11, padding: "2px 3px", color: COLORS.textMuted }}>Up</button>
                             <button onClick={() => moveItem(sec.id, item.id, 1)} disabled={ii === sec.items.length - 1}
-                              style={{ background: "none", border: "none", cursor: ii === sec.items.length - 1 ? "default" : "pointer", opacity: ii === sec.items.length - 1 ? 0.25 : 0.6, fontSize: 11, padding: "2px 3px", color: COLORS.textMuted }}>â–¼</button>
+                              style={{ background: "none", border: "none", cursor: ii === sec.items.length - 1 ? "default" : "pointer", opacity: ii === sec.items.length - 1 ? 0.25 : 0.6, fontSize: 11, padding: "2px 3px", color: COLORS.textMuted }}>Down</button>
                             <button onClick={() => removeItem(sec.id, item.id)}
-                              style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.red, fontSize: 15, padding: "0 3px", lineHeight: 1 }}>Ã—</button>
+                              style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.red, fontSize: 15, padding: "0 3px", lineHeight: 1 }}>x</button>
                           </div>
                         </div>
                       );
@@ -638,7 +638,7 @@ const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
           </div>
         </div>
 
-        {/* â”€â”€ RIGHT COLUMN ? live totals â”€â”€ */}
+        {/* Right column - live totals */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 0 }}>
           {/* Totals card */}
           <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -683,7 +683,7 @@ const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
           <div style={{ background: COLORS.amberLight, border: `1px solid #FDE68A`, borderRadius: 10, padding: "12px 14px" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E", marginBottom: 4 }}>PROVISIONAL ITEMS</div>
             <p style={{ margin: 0, fontSize: 11, color: "#92400E", lineHeight: 1.6 }}>
-              Line items with <strong>no quantity</strong> are shown in italic and calculated as <strong>$0</strong> ? they appear on the estimate as provisional/if-required items.
+              Line items with <strong>no quantity</strong> are shown in italic and calculated as <strong>$0</strong> - they appear on the estimate as provisional or if-required items.
             </p>
           </div>
 
@@ -692,9 +692,9 @@ const NewEstimateScreen = ({ clients = [], onBack, onSave }) => {
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textSecondary, marginBottom: 6 }}>TIPS</div>
             <ul style={{ margin: 0, paddingLeft: 14, display: "flex", flexDirection: "column", gap: 5 }}>
               {[
-                "Leave Qty blank ? provisional/if required line",
+                "Leave Qty blank - provisional or if required line",
                 "Click section title to rename it",
-                "â–²â–¼ arrows reorder sections and items",
+                "Up/Down buttons reorder sections and items",
                 "Switching division reloads the rate schedule",
               ].map((t, i) => <li key={i} style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>{t}</li>)}
             </ul>

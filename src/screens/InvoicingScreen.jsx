@@ -6,7 +6,7 @@ const InvoicingScreen = ({ invoices = [], regionFilter = "all", divisionFilter =
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: COLORS.textPrimary, margin: 0, letterSpacing: "-0.02em" }}>Invoicing</h1>
-        <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Progress claims ? Field data linked ? Client portal</p>
+        <p style={{ margin: "4px 0 0", color: COLORS.textSecondary, fontSize: 14 }}>Progress claims - field data linked - client portal</p>
       </div>
       <button style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: COLORS.amber, color: COLORS.navy, border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
         <Icon d={icons.plus} size={14} color={COLORS.navy} /> New Invoice
@@ -28,7 +28,7 @@ const InvoicingScreen = ({ invoices = [], regionFilter = "all", divisionFilter =
     <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
       <div style={{ padding: "14px 20px", borderBottom: `1px solid ${COLORS.border}`, fontWeight: 700, fontSize: 14, color: COLORS.textPrimary, display: "flex", justifyContent: "space-between" }}>
         Recent Invoices
-        <span style={{ fontSize: 12, color: COLORS.blue, fontWeight: 600, cursor: "pointer" }}>Client Portal ?</span>
+        <span style={{ fontSize: 12, color: COLORS.blue, fontWeight: 600, cursor: "pointer" }}>Client Portal</span>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -55,12 +55,10 @@ const InvoicingScreen = ({ invoices = [], regionFilter = "all", divisionFilter =
       </table>
     </div>
     <div style={{ background: COLORS.bg, borderRadius: 12, border: `2px dashed ${COLORS.border}`, padding: "24px", textAlign: "center" }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>Progress claim builder (estimate line items Ã— field days), field reports link, and client portal coming next.</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>Progress claim builder (estimate line items x field days), field reports link, and client portal coming next.</div>
     </div>
   </div>
 );
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// APP ? Collapsible sidebar, North/South + Division filters, new hierarchy
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// App shell with collapsible sidebar, region filters, and division filters
 export default InvoicingScreen;

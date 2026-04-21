@@ -598,7 +598,7 @@ const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets
                       border: `2px solid ${day.overnight ? "#7C3AED" : COLORS.border}`,
                       cursor: "pointer", fontSize: 12, fontWeight: 700,
                       color: day.overnight ? "#7C3AED" : COLORS.textMuted }}>
-                    ðŸŒ™ {day.overnight ? "Away" : "Home"}
+                    Overnight: {day.overnight ? "Away" : "Home"}
                   </button>
                 )}
                 {/* Leave button */}
@@ -621,7 +621,7 @@ const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets
               const lt = LEAVE_TYPES.find(l => l.id === day.leaveType);
               return (
                 <div style={{ background: COLORS.white, borderRadius: 14, border: `2px solid ${lt?.color || COLORS.border}`, padding: "20px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>ðŸ–ï¸</div>
+                  <div style={{ fontSize: 20, marginBottom: 8, fontWeight: 800 }}>Leave</div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: lt?.color }}>{lt?.label}</div>
                   {day.notes && <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 6 }}>{day.notes}</div>}
                 </div>
@@ -641,7 +641,7 @@ const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets
                         </span>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           {entryHours > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.teal }}>{entryHours}h</span>}
-                          <button onClick={() => removeEntry(entry.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", color: COLORS.red, fontSize: 18, lineHeight: 1 }}>Ã—</button>
+                          <button onClick={() => removeEntry(entry.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", color: COLORS.red, fontSize: 18, lineHeight: 1 }}>x</button>
                         </div>
                       </div>
                       <div style={{ padding: "14px" }}>
@@ -675,7 +675,7 @@ const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets
                         </div>
                         {entryHours > 0 && (
                           <div style={{ marginBottom: 12, padding: "6px 12px", background: COLORS.tealLight, borderRadius: 8, fontSize: 13, fontWeight: 700, color: COLORS.teal, textAlign: "center" }}>
-                            {entryHours} hour{entryHours !== 1 ? "s" : ""} ? rate type assigned by supervisor on approval
+                            {entryHours} hour{entryHours !== 1 ? "s" : ""} - rate type assigned by supervisor on approval
                           </div>
                         )}
                         {/* Notes */}
@@ -736,7 +736,7 @@ const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets
           </div>
           {expenses.length === 0 && (
             <div style={{ background: COLORS.white, borderRadius: 14, border: `2px dashed ${COLORS.border}`, padding: "40px 20px", textAlign: "center" }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>ðŸ§¾</div>
+              <div style={{ fontSize: 20, marginBottom: 8, fontWeight: 800 }}>Expenses</div>
               <div style={{ fontSize: 14, color: COLORS.textMuted }}>No expenses yet</div>
               <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>Tap + Add to log tools, receipts or reimbursables</div>
             </div>
@@ -752,7 +752,7 @@ const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 18, fontWeight: 800, color: COLORS.textPrimary }}>${exp.amount.toFixed(2)}</span>
                   <button onClick={() => setExpenses(prev => prev.filter(e => e.id !== exp.id))}
-                    style={{ background: COLORS.redLight, border: "none", borderRadius: 8, cursor: "pointer", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: COLORS.red }}>Ã—</button>
+                    style={{ background: COLORS.redLight, border: "none", borderRadius: 8, cursor: "pointer", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: COLORS.red }}>x</button>
                 </div>
               </div>
             );

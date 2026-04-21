@@ -122,7 +122,7 @@ const ClientsScreen = ({ clients = [], jobs = [], invoices = [], onNavigate, reg
   );
 };
 
-// â”€â”€ Client Detail Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Client detail screen
 const ClientDetailScreen = ({ client, jobs = [], invoices = [], onBack, onNavigate }) => {
   const [tab, setTab] = useState("overview");
   const clientJobs = jobs.filter(j => j.client === client.name);
@@ -202,7 +202,7 @@ const ClientDetailScreen = ({ client, jobs = [], invoices = [], onBack, onNaviga
         ))}
       </div>
 
-      {/* â”€â”€ Overview Tab â”€â”€ */}
+      {/* Overview tab */}
       {tab === "overview" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16 }}>
           <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -271,7 +271,7 @@ const ClientDetailScreen = ({ client, jobs = [], invoices = [], onBack, onNaviga
         </div>
       )}
 
-      {/* â”€â”€ Contacts Tab â”€â”€ */}
+      {/* Contacts tab */}
       {tab === "contacts" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -316,7 +316,7 @@ const ClientDetailScreen = ({ client, jobs = [], invoices = [], onBack, onNaviga
         </div>
       )}
 
-      {/* â”€â”€ Jobs Tab â”€â”€ */}
+      {/* Jobs tab */}
       {tab === "jobs" && (
         <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           {clientJobs.length === 0 ? (
@@ -360,7 +360,7 @@ const ClientDetailScreen = ({ client, jobs = [], invoices = [], onBack, onNaviga
         </div>
       )}
 
-      {/* â”€â”€ Activity Tab â”€â”€ */}
+      {/* Activity tab */}
       {tab === "activity" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -395,7 +395,7 @@ const ClientDetailScreen = ({ client, jobs = [], invoices = [], onBack, onNaviga
     </div>
   );
 };
-// â”€â”€ Estimates Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Estimates data
 export {
   ClientsScreen,
   ClientDetailScreen,

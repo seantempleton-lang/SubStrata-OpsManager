@@ -47,7 +47,7 @@ export const JOBS = [
   { id: "200044", title: "Contamination Assessment ? Industrial Site", client: "Aurora Energy", clientCode: "AE", division: "Geotech", region: "North", status: "enquiry", manager: null, supervisor: null, contractValue: null, invoiced: 0, startDate: null, endDate: null, type: "environmental", hoursLogged: 0, site: "East Tamaki, Auckland" },
 ];
 
-// â”€â”€ Timesheet Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Timesheet data
 export const STAFF = [
   { id: "u1", name: "Craig Tait",  initials: "CT", role: "Driller",              supervisor: "Sean Templeton", division: "Water",   region: "South" },
   { id: "u2", name: "Dave Rudd",   initials: "DR", role: "Driller",              supervisor: "Sean Templeton", division: "Water",   region: "South" },
@@ -696,7 +696,7 @@ export const catColors = {
   supplier:      { color: "#0D9488", bg: "#CCFBF1" },
 };
 
-// â”€â”€ Supplier Invoices (Accounts Payable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Supplier invoices (accounts payable)
 export const SUPPLIER_INVOICES_INIT = [
   {
     id: "SINV-2026-0009", supplierId: "s1", supplierName: "GNS Science",
@@ -867,8 +867,7 @@ export const TIMESHEET_DETAIL = [
   { week: "2026-03-09", user: "Pete H?pai", job: "200029", hours: 42, role: "Driller" },
 ];
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// LEAVE DATA ? pending and approved applications
+// Leave data - pending and approved applications
 export const LEAVE_APPS = [
   { id: "la-1", userId: "u1", staffName: "Craig Tait",  type: "annual",  start: "2026-03-30", end: "2026-04-03", days: 5, status: "pending",  notes: "Pre-approved by email", submittedAt: "2026-03-09" },
   { id: "la-2", userId: "u3", staffName: "Pete H?pai", type: "annual",  start: "2026-04-14", end: "2026-04-17", days: 4, status: "pending",  notes: "School holidays", submittedAt: "2026-03-07" },

@@ -287,7 +287,7 @@ export default function App() {
           {!SB && (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser?.name || "Connected User"}</div>
-              <div style={{ fontSize: 10, color: "#64748B" }}>{currentUser?.role || "Database-backed session"}{currentUser?.region ? ` • ${currentUser.region}` : ""}</div>
+              <div style={{ fontSize: 10, color: "#64748B" }}>{currentUser?.role || "Database-backed session"}{currentUser?.region ? ` | ${currentUser.region}` : ""}</div>
             </div>
           )}
         </div>
@@ -338,3 +338,4 @@ export default function App() {
     </div>
   );
 }
+

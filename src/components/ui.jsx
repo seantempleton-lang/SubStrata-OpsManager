@@ -7,7 +7,7 @@ const Icon = ({ d, size = 16, color = "currentColor", ...props }) => (
 );
 
 
-// â”€â”€ Pill / Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Pill / badge
 const StatusBadge = ({ status }) => {
   const cfg = statusConfig[status] || { label: status, color: "#64748B", bg: "#F1F5F9" };
   return (
@@ -24,7 +24,7 @@ const DivisionBadge = ({ div }) => (
   </span>
 );
 
-// â”€â”€ KPI Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// KPI card
 const KpiCard = ({ label, value, sub, accent, icon, trend }) => (
   <div style={{ background: COLORS.white, borderRadius: 12, padding: "20px 24px", border: `1px solid ${COLORS.border}`, display: "flex", flexDirection: "column", gap: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -38,7 +38,7 @@ const KpiCard = ({ label, value, sub, accent, icon, trend }) => (
   </div>
 );
 
-// â”€â”€ Progress Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Progress bar
 const ProgressBar = ({ value, max, color = COLORS.teal }) => {
   const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
@@ -48,9 +48,7 @@ const ProgressBar = ({ value, max, color = COLORS.teal }) => {
   );
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// SCREENS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Screens
 
 
 const BarChart = ({ data, height = 160, color = COLORS.blue, showValues = true }) => {
