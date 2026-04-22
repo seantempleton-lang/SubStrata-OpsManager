@@ -8,12 +8,12 @@ values
   ('EMP-001', 'Sean Templeton', 'ST', 'Lead Geotech', 'Geotech', 'South', 'sean@example.com'),
   ('EMP-002', 'Craig Tait', 'CT', 'Driller', 'Water', 'South', 'craig@example.com'),
   ('EMP-003', 'Dave Rudd', 'DR', 'Driller', 'Water', 'South', 'dave@example.com'),
-  ('EMP-004', 'Lisa Park', 'LP', 'Operations Manager', 'Geotech', 'South', 'lisa@example.com'),
+  ('EMP-004', 'Tracey Flatman', 'TF', 'Administrator', 'Operations', 'South', 'tracey.flatman@drilling.co.nz'),
   ('EMP-005', 'Mike Brown', 'MB', 'Geotech Field Tech', 'Geotech', 'South', 'mike@example.com'),
-  ('EMP-006', 'Kevin Lam', 'KL', 'Regional Manager', 'Geotech', 'North', 'kevin@example.com'),
+  ('EMP-006', 'Tom Lubbe', 'TL', 'Supervisor', 'Operations', 'South', 'tom.lubbe@drilling.co.nz'),
   ('EMP-007', 'Pete Hapai', 'PH', 'Driller', 'Geotech', 'North', 'pete@example.com'),
   ('EMP-008', 'Tony Walsh', 'TW', 'Drillers Assistant', 'Water', 'South', 'tony@example.com'),
-  ('EMP-009', 'Sam Ohu', 'SO', 'Drillers Assistant', 'Geotech', 'South', 'sam@example.com')
+  ('EMP-009', 'Greg Cossar', 'GC', 'User', 'Operations', 'South', 'greg.cossar@drilling.co.nz')
 on conflict (employee_code) do update
 set
   full_name = excluded.full_name,

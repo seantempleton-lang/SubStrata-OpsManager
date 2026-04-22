@@ -10,8 +10,12 @@ set app_role = case
     or lower(coalesce(email, '')) = 'sean@example.com'
     or lower(coalesce(email, '')) = 'stempleton@drilling.co.nz'
     then 'SuperUser'
-  when role_title in ('Regional Manager', 'Operations Manager') then 'Administrator'
-  when role_title in ('Lead Geotech') then 'Supervisor'
+  when role_title in ('Regional Manager', 'Operations Manager', 'Administrator')
+    or lower(full_name) = 'tracey flatman'
+    then 'Administrator'
+  when role_title in ('Lead Geotech', 'Supervisor')
+    or lower(full_name) = 'tom lubbe'
+    then 'Supervisor'
   when role_title ilike '%maintenance%' then 'Maintenance'
   else 'FieldUser'
 end
@@ -24,6 +28,18 @@ where employee_code = 'EMP-001'
    or lower(full_name) = 'sean templeton'
    or lower(coalesce(email, '')) = 'sean@example.com'
    or lower(coalesce(email, '')) = 'stempleton@drilling.co.nz';
+
+update app_users
+set app_role = 'Administrator'
+where lower(full_name) = 'tracey flatman';
+
+update app_users
+set app_role = 'Supervisor'
+where lower(full_name) = 'tom lubbe';
+
+update app_users
+set app_role = 'FieldUser'
+where lower(full_name) = 'greg cossar';
 
 alter table app_users
   alter column app_role set default 'FieldUser';

@@ -170,8 +170,9 @@ export default function LoginScreen({
         >
           Demo accounts:
           <div><strong>Sean:</strong> `SeanTempleton`</div>
-          <div><strong>Lisa:</strong> `LisaPark`</div>
-          <div><strong>Kevin:</strong> `KevinLam`</div>
+          <div><strong>Tracey:</strong> `TraceyFlatman`</div>
+          <div><strong>Tom:</strong> `TomLubbe`</div>
+          <div><strong>Greg:</strong> `GregCossar`</div>
           <div><strong>Password:</strong> `SubStrata!2026`</div>
         </div>
       </div>

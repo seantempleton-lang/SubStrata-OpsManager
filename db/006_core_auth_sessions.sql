@@ -79,8 +79,9 @@ select
 from (
   values
     ('EMP-001', 'sean@example.com', 'scrypt$3178da955ccb5d7e8edead16b3aeb8ed$4765c4939153ad5b736d0f4f1b9f7e1367b45d021f040829c82298b4f811093cea24b0acf22da1917344c9d75b82b5e2ddef69ffd3162f0767c24d22fbe958aa'),
-    ('EMP-004', 'lisa@example.com', 'scrypt$de9a892425e6b4002f4469ccc6f43bb5$f87953009a6e010dee72ec5e31513a3f99040a349ef9605323f44d7ddd72236a2d0d3db557588bf08e0e927e602dbfe224a260d76ec510565e04833f20acefbd'),
-    ('EMP-006', 'kevin@example.com', 'scrypt$c4cd47f2a5583980d6c78196f6130533$9ebd2908a663efd95779020c234f827eb260d26d90b1e9c051be70e341b7d823ef4842c648349a0ab8ea4dcd03e9a9bf5bcb8cdec641bf7e3cbe9d0fe0847a03'),
+    ('EMP-004', 'tracey.flatman@drilling.co.nz', 'scrypt$f5e65d0eb31b2accc16412ec634ff592$a3b426c416cd9b2722ce4ac608e1bbf8d40965b2797921a537687918360ca7c25bd2941af7581d5a2796254b8d69e7bbda3d6b3156c675a2736b3f66001f5f61'),
+    ('EMP-006', 'tom.lubbe@drilling.co.nz', 'scrypt$b187ab906b1f7668bb10c78065a48631$c28ecfe9362f9f8004dc7f069add7391c8d05408d172493a6930f4305f2dcaf6caf8459fd7c7f84a7161402a992303d3a4d1f966fb5404d03fb509b0aa7d7991'),
+    ('EMP-009', 'greg.cossar@drilling.co.nz', 'scrypt$21a1f6d5036842a2e5e27ff5e0998904$076b3ba07d67c1ec924348073341f34f942d659c01b397d899e4578f497051f0d1450a1dbdc92f35bb6e3d0f003eb63f5d12c56737cc5de71bd2149af6f1548b'),
     ('EMP-010', 'rahulnegi@drilling.co.nz', 'scrypt$34c10e38ab1c21c1416a827e6eafc13b$e23188bf3dd1f57ee39e92db52c4f9f85444d41e939f34d19a2ec59d18f56f43732f0eaf94ebbc9ff6780f364a61cc77382785e19c924e5d8f82e34664df08d4')
 ) as v(employee_code, login_email, password_hash)
 join app_users au on au.employee_code = v.employee_code
@@ -90,6 +91,12 @@ set
   password_hash = excluded.password_hash,
   is_active = excluded.is_active,
   updated_at = now();
+
+update app_auth_accounts
+set
+  is_active = false,
+  updated_at = now()
+where lower(login_email) in ('lisa@example.com', 'kevin@example.com');
 
 drop trigger if exists set_updated_at_app_auth_accounts on app_auth_accounts;
 create trigger set_updated_at_app_auth_accounts
