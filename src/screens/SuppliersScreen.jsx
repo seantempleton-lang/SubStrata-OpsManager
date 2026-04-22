@@ -20,7 +20,6 @@ function invoiceVariance(invoice) {
 function APReconciliationTab({
   invoices = [],
   suppliers = [],
-  currentUserName = "Sean Templeton",
 }) {
   const { updateSupplierInvoiceStatus } = useAppData();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -33,13 +32,13 @@ function APReconciliationTab({
 
   async function runAction(invoiceId, action) {
     if (action === "approve") {
-      await updateSupplierInvoiceStatus(invoiceId, "approved", currentUserName);
+      await updateSupplierInvoiceStatus(invoiceId, "approved");
     }
     if (action === "dispute") {
-      await updateSupplierInvoiceStatus(invoiceId, "disputed", currentUserName);
+      await updateSupplierInvoiceStatus(invoiceId, "disputed");
     }
     if (action === "pay") {
-      await updateSupplierInvoiceStatus(invoiceId, "paid", currentUserName);
+      await updateSupplierInvoiceStatus(invoiceId, "paid");
     }
     setConfirmAction(null);
   }
@@ -512,7 +511,6 @@ function APReconciliationTab({
 const SuppliersScreen = ({
   suppliers = [],
   supplierInvoices = [],
-  currentUserName = "Sean Templeton",
   regionFilter = "all",
   divisionFilter = { Water: true, Geotech: true },
 }) => {
@@ -947,7 +945,6 @@ const SuppliersScreen = ({
         <APReconciliationTab
           invoices={supplierInvoices}
           suppliers={suppliers}
-          currentUserName={currentUserName}
         />
       )}
     </div>

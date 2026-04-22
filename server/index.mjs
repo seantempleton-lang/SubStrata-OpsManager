@@ -8,8 +8,19 @@ import {
   createEstimate,
   createJob,
   getBootstrapData,
+  resetUserPassword,
+  updateTimesheetStatus,
   updateSupplierInvoiceStatus,
+  updateUserAuthority,
+  updateUserIdentity,
 } from "./repository.mjs";
+import {
+  clearSessionCookie,
+  loginWithPassword,
+  requireAuth,
+  revokeSession,
+  setSessionCookie,
+} from "./auth.mjs";
 import { closePool } from "./db.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,43 +40,122 @@ app.get("/health.txt", (_req, res) => {
   res.type("text/plain").send("ok");
 });
 
-app.get("/api/bootstrap", async (_req, res) => {
+app.get("/api/session", requireAuth, async (req, res) => {
+  res.json({
+    authenticated: true,
+    user: req.auth.user,
+    expiresAt: req.auth.expiresAt,
+  });
+});
+
+app.post("/api/session/login", async (req, res) => {
   try {
-    const data = await getBootstrapData();
+    const session = await loginWithPassword(req.body.email, req.body.password);
+    setSessionCookie(res, session.sessionToken, session.expiresAt);
+    res.status(201).json({
+      authenticated: true,
+      user: session.user,
+      expiresAt: session.expiresAt,
+    });
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+});
+
+app.delete("/api/session/logout", requireAuth, async (req, res) => {
+  await revokeSession(req.auth.sessionId);
+  clearSessionCookie(res);
+  res.status(204).end();
+});
+
+app.get("/api/bootstrap", requireAuth, async (req, res) => {
+  try {
+    const data = await getBootstrapData(req.auth.user.dbId);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post("/api/jobs", async (req, res) => {
+app.post("/api/jobs", requireAuth, async (req, res) => {
   try {
-    const job = await createJob(req.body);
+    const job = await createJob(req.body, req.auth.user);
     res.status(201).json(job);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-app.post("/api/estimates", async (req, res) => {
+app.post("/api/estimates", requireAuth, async (req, res) => {
   try {
-    const estimate = await createEstimate(req.body);
+    const estimate = await createEstimate(req.body, req.auth.user);
     res.status(201).json(estimate);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-app.patch("/api/supplier-invoices/:id/status", async (req, res) => {
+app.patch("/api/supplier-invoices/:id/status", requireAuth, async (req, res) => {
   try {
     const invoice = await updateSupplierInvoiceStatus(
       req.params.id,
       req.body.status,
-      req.body.currentUserName,
+      req.auth.user,
     );
     res.json(invoice);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+app.patch("/api/timesheets/:id/status", requireAuth, async (req, res) => {
+  try {
+    const timesheet = await updateTimesheetStatus(
+      req.params.id,
+      req.body.action,
+      req.auth.user,
+    );
+    res.json(timesheet);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.patch("/api/users/:id/role", requireAuth, async (req, res) => {
+  try {
+    const user = await updateUserAuthority(
+      req.params.id,
+      req.body.appRole,
+      req.auth.user,
+    );
+    res.json(user);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
+  }
+});
+
+app.patch("/api/users/:id", requireAuth, async (req, res) => {
+  try {
+    const user = await updateUserIdentity(
+      req.params.id,
+      req.body,
+      req.auth.user,
+    );
+    res.json(user);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
+  }
+});
+
+app.post("/api/users/:id/reset-password", requireAuth, async (req, res) => {
+  try {
+    const result = await resetUserPassword(
+      req.params.id,
+      req.auth.user,
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
   }
 });
 

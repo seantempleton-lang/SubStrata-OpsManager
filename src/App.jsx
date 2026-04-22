@@ -13,11 +13,17 @@ import PlannerScreen from "./screens/PlannerScreen.jsx";
 import ReportsScreen from "./screens/ReportsScreen.jsx";
 import HSEScreen from "./screens/HSEScreen.jsx";
 import InvoicingScreen from "./screens/InvoicingScreen.jsx";
+import LoginScreen from "./screens/LoginScreen.jsx";
+import AdminScreen from "./screens/AdminScreen.jsx";
 
 export default function App() {
   const {
     loading,
     error,
+    authError,
+    isAuthenticated,
+    login,
+    logout,
     refresh,
     currentUser,
     staff,
@@ -35,6 +41,10 @@ export default function App() {
     reporting,
     createJob,
     createEstimate,
+    updateTimesheetStatus,
+    updateUserRole,
+    updateUserIdentity,
+    resetUserPassword,
   } = useAppData();
 
   const [screen, setScreen] = useState("dashboard");
@@ -113,6 +123,9 @@ export default function App() {
     { id: "timesheets", label: "Timesheets", icon: icons.time },
     { id: "hse", label: "HSE", icon: icons.alert },
     { id: "reports", label: "Reports", icon: icons.reports },
+    ...(currentUser?.appRoleRank >= 3
+      ? [{ id: "admin", label: "Admin", icon: icons.settings }]
+      : []),
   ];
 
   const activeSection = (id) => {
@@ -148,6 +161,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={login} submitting={loading} error={authError} />;
   }
 
   const NavItem = ({ item, depth = 0 }) => {
@@ -285,10 +302,28 @@ export default function App() {
             </span>
           </div>
           {!SB && (
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser?.name || "Connected User"}</div>
-              <div style={{ fontSize: 10, color: "#64748B" }}>{currentUser?.role || "Database-backed session"}{currentUser?.region ? ` | ${currentUser.region}` : ""}</div>
-            </div>
+            <>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser?.name || "Connected User"}</div>
+                <div style={{ fontSize: 10, color: "#64748B" }}>{currentUser?.role || "Database-backed session"}{currentUser?.region ? ` | ${currentUser.region}` : ""}</div>
+              </div>
+              <button
+                onClick={logout}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.navyBorder}`,
+                  background: COLORS.navyLight,
+                  color: COLORS.amber,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                Log Out
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -320,7 +355,17 @@ export default function App() {
           {screen === "dashboard" && <DashboardScreen onNavigate={navigate} jobs={jobs} invoices={invoices} timesheets={timesheets} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "jobs" && <JobsScreen jobs={jobs} timesheets={timesheets} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "jobdetail" && selectedJob && <JobDetailScreen job={selectedJob} timesheets={timesheets} onBack={() => navigate("jobs")} />}
-          {screen === "timesheets" && <TimesheetsScreen staff={staff} timesheets={timesheets} jobs={jobs} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
+          {screen === "timesheets" && (
+            <TimesheetsScreen
+              staff={staff}
+              timesheets={timesheets}
+              jobs={jobs}
+              currentUser={currentUser}
+              onUpdateTimesheetStatus={updateTimesheetStatus}
+              regionFilter={regionFilter}
+              divisionFilter={divisionFilter}
+            />
+          )}
           {(screen === "invoicing" || screen === "finance") && <InvoicingScreen jobs={jobs} invoices={invoices} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "newjob" && <NewJobScreen onBack={() => navigate("jobs")} onSave={handleSaveJob} />}
           {screen === "clients" && <ClientsScreen clients={clients} jobs={jobs} invoices={invoices} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
@@ -328,11 +373,20 @@ export default function App() {
           {screen === "estimates" && <EstimatesScreen onNavigate={navigate} estimates={estimates} />}
           {screen === "estimatedetail" && selectedEstimate && <EstimateDetailScreen estimate={selectedEstimate} onBack={() => navigate("estimates")} onNavigate={navigate} />}
           {screen === "newestimate" && <NewEstimateScreen clients={clients} onBack={() => navigate("estimates")} onSave={handleSaveEstimate} />}
-          {screen === "suppliers" && <SuppliersScreen suppliers={suppliers} supplierInvoices={supplierInvoices} currentUserName={currentUser?.name || "Sean Templeton"} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
+          {screen === "suppliers" && <SuppliersScreen suppliers={suppliers} supplierInvoices={supplierInvoices} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "resources" && <ResourcesScreen equipment={equipment} inspections={inspections} jobs={jobs} staff={staff} plannerJobs={plannerJobs} leaveApplications={leaveApplications} subTab={resourcesSubTab} setSubTab={setResourcesSubTab} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "planner" && <PlannerScreen jobs={jobs} equipment={equipment} plannerJobs={plannerJobs} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "reports" && <ReportsScreen estimates={estimates} jobs={jobs} equipment={equipment} invoices={invoices} reporting={reporting} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "hse" && <HSEScreen regionFilter={regionFilter} divisionFilter={divisionFilter} />}
+          {screen === "admin" && currentUser?.appRoleRank >= 3 && (
+            <AdminScreen
+              currentUser={currentUser}
+              staff={staff}
+              onUpdateUserRole={updateUserRole}
+              onUpdateUserIdentity={updateUserIdentity}
+              onResetUserPassword={resetUserPassword}
+            />
+          )}
         </div>
       </div>
     </div>

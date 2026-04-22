@@ -72,12 +72,23 @@ const DayTypeBadge = ({ day }) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MANAGER VIEW ? desktop approval queue
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const ManagerTimesheetsView = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEED, jobs = JOBS_SEED, onViewTimesheet, tsVisible = () => true }) => {
+const ManagerTimesheetsView = ({
+  staff = STAFF_SEED,
+  timesheets = TIMESHEETS_SEED,
+  jobs = JOBS_SEED,
+  currentUser = null,
+  onViewTimesheet,
+  onUpdateTimesheetStatus = async () => null,
+  tsVisible = () => true,
+}) => {
   const STAFF = staff;
   const TIMESHEETS = timesheets;
   const JOBS = jobs;
   const [filter, setFilter] = useState("pending");
   const [weekFilter, setWeekFilter] = useState("2026-03-09");
+  const [activeAction, setActiveAction] = useState(null);
+  const [actionMessage, setActionMessage] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const filtered = TIMESHEETS.filter(ts => tsVisible(ts)).filter(ts => {
     if (filter === "pending") return ["submitted", "supervisor_approved"].includes(ts.status);
@@ -88,6 +99,27 @@ const ManagerTimesheetsView = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEE
 
   const totalHours = filtered.reduce((s, ts) => s + calcTsHours(ts), 0);
   const pendingCount = TIMESHEETS.filter(ts => tsVisible(ts) && ["submitted","supervisor_approved"].includes(ts.status)).length;
+
+  const handleStatusChange = async (timesheetId, action) => {
+    setActiveAction(`${timesheetId}:${action}`);
+    setActionError("");
+    setActionMessage("");
+
+    try {
+      await onUpdateTimesheetStatus(timesheetId, action);
+      setActionMessage(
+        action === "supervisor_approve"
+          ? "Supervisor approval saved."
+          : action === "manager_approve"
+            ? "Final approval saved."
+            : "Timesheet returned to the employee.",
+      );
+    } catch (error) {
+      setActionError(error.message || "Unable to update timesheet status.");
+    } finally {
+      setActiveAction(null);
+    }
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -126,6 +158,22 @@ const ManagerTimesheetsView = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEE
           ))}
         </div>
       </div>
+
+      {(actionMessage || actionError) && (
+        <div
+          style={{
+            padding: "12px 14px",
+            borderRadius: 10,
+            border: `1px solid ${actionError ? COLORS.red : COLORS.green}`,
+            background: actionError ? COLORS.redLight : COLORS.greenLight,
+            color: actionError ? COLORS.red : COLORS.green,
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          {actionError || actionMessage}
+        </div>
+      )}
 
       {/* Timesheet cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -190,21 +238,37 @@ const ManagerTimesheetsView = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEE
                 <div style={{ display: "flex", gap: 8 }}>
                   {ts.status === "submitted" && (
                     <>
-                      <button style={{ padding: "7px 16px", background: COLORS.greenLight, border: `1px solid ${COLORS.green}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.green, cursor: "pointer" }}>
-                        ? Approve (Supervisor)
+                      <button
+                        onClick={() => handleStatusChange(ts.id, "supervisor_approve")}
+                        disabled={activeAction !== null}
+                        style={{ padding: "7px 16px", background: COLORS.greenLight, border: `1px solid ${COLORS.green}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.green, cursor: activeAction !== null ? "wait" : "pointer", opacity: activeAction !== null ? 0.7 : 1 }}
+                      >
+                        {activeAction === `${ts.id}:supervisor_approve` ? "Saving..." : "Approve (Supervisor)"}
                       </button>
-                      <button style={{ padding: "7px 12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.red, cursor: "pointer" }}>
-                        Return
+                      <button
+                        onClick={() => handleStatusChange(ts.id, "reject")}
+                        disabled={activeAction !== null}
+                        style={{ padding: "7px 12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.red, cursor: activeAction !== null ? "wait" : "pointer", opacity: activeAction !== null ? 0.7 : 1 }}
+                      >
+                        {activeAction === `${ts.id}:reject` ? "Saving..." : "Return"}
                       </button>
                     </>
                   )}
                   {ts.status === "supervisor_approved" && (
                     <>
-                      <button style={{ padding: "7px 16px", background: COLORS.green, border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.white, cursor: "pointer" }}>
-                        ? Final Approve
+                      <button
+                        onClick={() => handleStatusChange(ts.id, "manager_approve")}
+                        disabled={activeAction !== null}
+                        style={{ padding: "7px 16px", background: COLORS.green, border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.white, cursor: activeAction !== null ? "wait" : "pointer", opacity: activeAction !== null ? 0.7 : 1 }}
+                      >
+                        {activeAction === `${ts.id}:manager_approve` ? "Saving..." : "Final Approve"}
                       </button>
-                      <button style={{ padding: "7px 12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.red, cursor: "pointer" }}>
-                        Return
+                      <button
+                        onClick={() => handleStatusChange(ts.id, "reject")}
+                        disabled={activeAction !== null}
+                        style={{ padding: "7px 12px", background: COLORS.redLight, border: `1px solid ${COLORS.red}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: COLORS.red, cursor: activeAction !== null ? "wait" : "pointer", opacity: activeAction !== null ? 0.7 : 1 }}
+                      >
+                        {activeAction === `${ts.id}:reject` ? "Saving..." : "Return"}
                       </button>
                     </>
                   )}
@@ -895,7 +959,15 @@ const MobileTimesheetEntry = ({ jobs = JOBS_SEED, staff = STAFF_SEED, timesheets
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MAIN TIMESHEETS SCREEN ? toggles between manager and mobile views
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const TimesheetsScreen = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEED, jobs = JOBS_SEED, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
+const TimesheetsScreen = ({
+  staff = STAFF_SEED,
+  timesheets = TIMESHEETS_SEED,
+  jobs = JOBS_SEED,
+  currentUser = null,
+  onUpdateTimesheetStatus = async () => null,
+  regionFilter = "all",
+  divisionFilter = { Water: true, Geotech: true },
+}) => {
   const STAFF = staff;
   const TIMESHEETS = timesheets;
   const JOBS = jobs;
@@ -938,7 +1010,15 @@ const TimesheetsScreen = ({ staff = STAFF_SEED, timesheets = TIMESHEETS_SEED, jo
           </button>
         </div>
       </div>
-      <ManagerTimesheetsView staff={staff} timesheets={timesheets} jobs={jobs} onViewTimesheet={(ts) => setSelectedTs(ts)} tsVisible={tsVisible} />
+      <ManagerTimesheetsView
+        staff={staff}
+        timesheets={timesheets}
+        jobs={jobs}
+        currentUser={currentUser}
+        onViewTimesheet={(ts) => setSelectedTs(ts)}
+        onUpdateTimesheetStatus={onUpdateTimesheetStatus}
+        tsVisible={tsVisible}
+      />
     </div>
   );
 };

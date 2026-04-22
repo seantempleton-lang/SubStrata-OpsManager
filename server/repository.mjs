@@ -1,4 +1,17 @@
 import { query } from "./db.mjs";
+import {
+  createPasswordHash,
+  generateLoginUsername,
+  generateRandomPassword,
+  normalizeLoginEmail,
+  normalizeLoginUsername,
+} from "./auth.mjs";
+import {
+  assertRoleAtLeast,
+  getUserAuthoritySummary,
+  isKnownAppRole,
+  normalizeAppRole,
+} from "./authorization.mjs";
 
 const STATUS_BY_SUPPLIER_INVOICE = {
   received: "pending_review",
@@ -92,13 +105,34 @@ async function fetchRows() {
         full_name,
         initials,
         role_title,
+        app_role,
+        login_username,
         division,
         region,
         email,
         phone,
-        metadata
-      from app_users
-      where is_active = true
+        metadata,
+        auth_login_email,
+        has_auth_account
+      from (
+        select
+          u.id,
+          u.employee_code,
+          u.full_name,
+          u.initials,
+          u.role_title,
+          u.app_role,
+          u.division,
+          u.region,
+          u.email,
+          u.phone,
+          u.metadata,
+          a.login_email as auth_login_email,
+          (a.id is not null) as has_auth_account
+        from app_users u
+        left join app_auth_accounts a on a.user_id = u.id
+        where u.is_active = true
+      ) users
       order by full_name asc
     `),
     query(`
@@ -463,7 +497,7 @@ async function fetchRows() {
   };
 }
 
-export async function getBootstrapData() {
+export async function getBootstrapData(currentUserId) {
   const rows = await fetchRows();
 
   const usersById = new Map(rows.users.map((user) => [user.id, user]));
@@ -508,9 +542,15 @@ export async function getBootstrapData() {
     name: user.full_name,
     initials: user.initials,
     role: user.role_title,
+    roleTitle: user.role_title,
+    appRole: normalizeAppRole(user.app_role),
+    appRoleRank: getUserAuthoritySummary({ appRole: user.app_role }).appRoleRank,
+    username: user.login_username,
     division: user.division,
     region: user.region,
     email: user.email,
+    loginEmail: user.auth_login_email ?? user.email,
+    hasAuthAccount: Boolean(user.has_auth_account),
     phone: user.phone,
     metadata: parseJson(user.metadata, {}),
   }));
@@ -883,13 +923,12 @@ export async function getBootstrapData() {
       timesheetDetail,
     },
     currentUser:
-      staff.find((user) => user.name === "Sean Templeton") ??
-      staff[0] ??
+      staff.find((user) => user.dbId === currentUserId) ??
       null,
   };
 }
 
-export async function createJob(input) {
+export async function createJob(input, currentUser) {
   const clientResult = await query(
     `select id, client_code from clients where name = $1 limit 1`,
     [input.client],
@@ -912,12 +951,6 @@ export async function createJob(input) {
   const nextSequence = Number(numberResult.rows[0].max_sequence) + 1;
   const jobNumber = `${prefix}${String(nextSequence).padStart(3, "0")}`;
 
-  const managerName = input.division === "Water" ? "Sean Templeton" : "Lisa Park";
-  const managerResult = await query(
-    `select id from app_users where full_name = $1 limit 1`,
-    [managerName],
-  );
-
   const inserted = await query(
     `
       insert into jobs (
@@ -930,11 +963,13 @@ export async function createJob(input) {
         status,
         job_type,
         manager_user_id,
+        created_by_user_id,
         site_name,
         site_address,
-        scope_of_work
+        scope_of_work,
+        metadata
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
       returning id
     `,
     [
@@ -946,18 +981,23 @@ export async function createJob(input) {
       input.region,
       input.status,
       input.type,
-      managerResult.rows[0]?.id ?? null,
+      currentUser?.dbId ?? null,
+      currentUser?.dbId ?? null,
       input.site.trim(),
       input.site.trim(),
       input.scope?.trim() || null,
+      JSON.stringify({
+        createdByUserId: currentUser?.dbId ?? null,
+        createdByUserName: currentUser?.name ?? null,
+      }),
     ],
   );
 
-  const bootstrap = await getBootstrapData();
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
   return bootstrap.jobs.find((job) => job.dbId === inserted.rows[0].id);
 }
 
-export async function createEstimate(input) {
+export async function createEstimate(input, currentUser) {
   const clientResult = await query(
     `select id, client_code from clients where name = $1 limit 1`,
     [input.client],
@@ -979,10 +1019,6 @@ export async function createEstimate(input) {
   const estimateNumber = `EST-${new Date().getFullYear()}-${String(nextSequence).padStart(4, "0")}`;
   const referenceNumber = String(23560 + nextSequence - 1);
 
-  const preparerResult = await query(
-    `select id from app_users where full_name = 'Sean Templeton' limit 1`,
-  );
-
   const insertedEstimate = await query(
     `
       insert into estimates (
@@ -996,14 +1032,16 @@ export async function createEstimate(input) {
         title,
         site_address,
         prepared_by_user_id,
+        created_by_user_id,
         prepared_at,
         valid_until,
         contact_name,
         contact_mobile,
         scope_of_work,
+        metadata,
         notes
       )
-      values ($1, $2, 1, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+      values ($1, $2, 1, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16::jsonb)
       returning id
     `,
     [
@@ -1014,12 +1052,17 @@ export async function createEstimate(input) {
       input.region,
       input.title.trim(),
       input.siteAddress?.trim() || null,
-      preparerResult.rows[0]?.id ?? null,
+      currentUser?.dbId ?? null,
+      currentUser?.dbId ?? null,
       input.date,
       input.validUntil || null,
       input.contact?.trim() || null,
       input.contactMobile?.trim() || null,
       input.scope?.trim() || null,
+      JSON.stringify({
+        createdByUserId: currentUser?.dbId ?? null,
+        createdByUserName: currentUser?.name ?? null,
+      }),
       JSON.stringify(input.notes ?? []),
     ],
   );
@@ -1054,20 +1097,21 @@ export async function createEstimate(input) {
     }
   }
 
-  const bootstrap = await getBootstrapData();
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
   return bootstrap.estimates.find((estimate) => estimate.dbId === insertedEstimate.rows[0].id);
 }
 
-export async function updateSupplierInvoiceStatus(id, status, currentUserName = "Sean Templeton") {
+export async function updateSupplierInvoiceStatus(id, status, currentUser) {
+  assertRoleAtLeast(
+    currentUser,
+    "Supervisor",
+    "Supervisor access is required to change supplier invoice status.",
+  );
+
   const databaseStatus = STATUS_TO_SUPPLIER_INVOICE[status];
   if (!databaseStatus) {
     throw new Error(`Unsupported supplier invoice status "${status}".`);
   }
-
-  const approverResult = await query(
-    `select id from app_users where full_name = $1 limit 1`,
-    [currentUserName],
-  );
 
   await query(
     `
@@ -1077,12 +1121,385 @@ export async function updateSupplierInvoiceStatus(id, status, currentUserName = 
         approved_by_user_id = case when $2 in ('approved', 'paid') then $3 else approved_by_user_id end,
         approved_at = case when $2 in ('approved', 'paid') then now() else approved_at end,
         paid_at = case when $2 = 'paid' then now() else paid_at end,
+        last_action_by_user_id = $3,
+        last_action_at = now(),
         notes = coalesce(notes, '')
       where id = $1
     `,
-    [id, databaseStatus, approverResult.rows[0]?.id ?? null],
+    [id, databaseStatus, currentUser?.dbId ?? null],
   );
 
-  const bootstrap = await getBootstrapData();
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
   return bootstrap.supplierInvoices.find((invoice) => invoice.id === id);
+}
+
+export async function updateTimesheetStatus(
+  id,
+  action,
+  currentUser,
+) {
+  const supportedActions = new Set(["supervisor_approve", "manager_approve", "reject"]);
+  if (!supportedActions.has(action)) {
+    throw new Error(`Unsupported timesheet action "${action}".`);
+  }
+
+  const existingResult = await query(
+    `
+      select
+        id,
+        status
+      from timesheets
+      where id = $1
+      limit 1
+    `,
+    [id],
+  );
+
+  if (existingResult.rowCount === 0) {
+    throw new Error("Timesheet was not found.");
+  }
+
+  const currentStatus = existingResult.rows[0].status;
+
+  if (action === "supervisor_approve" && currentStatus !== "submitted") {
+    throw new Error("Only submitted timesheets can be supervisor approved.");
+  }
+
+  if (action === "manager_approve" && currentStatus !== "supervisor_approved") {
+    throw new Error("Only supervisor-approved timesheets can receive final approval.");
+  }
+
+  if (action === "reject" && !["submitted", "supervisor_approved"].includes(currentStatus)) {
+    throw new Error("Only submitted or supervisor-approved timesheets can be returned.");
+  }
+
+  if (action === "supervisor_approve" || action === "reject") {
+    assertRoleAtLeast(
+      currentUser,
+      "Supervisor",
+      "Supervisor access is required for this timesheet action.",
+    );
+  }
+
+  if (action === "manager_approve") {
+    assertRoleAtLeast(
+      currentUser,
+      "Administrator",
+      "Administrator access is required for final timesheet approval.",
+    );
+  }
+
+  const approverId = currentUser?.dbId ?? null;
+
+  if (!approverId) {
+    throw new Error("No active app user matched the current approver.");
+  }
+
+  if (action === "supervisor_approve") {
+    await query(
+      `
+        update timesheets
+        set
+          status = 'supervisor_approved',
+          supervisor_approved_by = $2,
+          supervisor_approved_at = now(),
+          manager_approved_by = null,
+          manager_approved_at = null,
+          last_action_by_user_id = $2,
+          last_action_at = now(),
+          updated_at = now()
+        where id = $1
+      `,
+      [id, approverId],
+    );
+  }
+
+  if (action === "manager_approve") {
+    await query(
+      `
+        update timesheets
+        set
+          status = 'manager_approved',
+          manager_approved_by = $2,
+          manager_approved_at = now(),
+          last_action_by_user_id = $2,
+          last_action_at = now(),
+          updated_at = now()
+        where id = $1
+      `,
+      [id, approverId],
+    );
+  }
+
+  if (action === "reject") {
+    await query(
+      `
+        update timesheets
+        set
+          status = 'rejected',
+          supervisor_approved_by = null,
+          supervisor_approved_at = null,
+          manager_approved_by = null,
+          manager_approved_at = null,
+          last_action_by_user_id = $2,
+          last_action_at = now(),
+          updated_at = now()
+        where id = $1
+      `,
+      [id, approverId],
+    );
+  }
+
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
+  return bootstrap.timesheets.find((timesheet) => timesheet.id === id) ?? null;
+}
+
+export async function updateUserAuthority(targetUserId, appRole, currentUser) {
+  assertRoleAtLeast(
+    currentUser,
+    "Administrator",
+    "Administrator access is required to update user roles.",
+  );
+
+  if (!isKnownAppRole(appRole)) {
+    const error = new Error(`Unsupported app role "${appRole}".`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const normalizedRole = normalizeAppRole(appRole);
+  const actorAuthority = getUserAuthoritySummary(currentUser);
+
+  const existingUserResult = await query(
+    `
+      select
+        id,
+        employee_code,
+        full_name,
+        role_title,
+        app_role
+      from app_users
+      where id = $1
+      limit 1
+    `,
+    [targetUserId],
+  );
+
+  if (existingUserResult.rowCount === 0) {
+    throw new Error("User was not found.");
+  }
+
+  const targetUser = existingUserResult.rows[0];
+  const targetAuthority = getUserAuthoritySummary({
+    appRole: targetUser.app_role,
+  });
+
+  if (!actorAuthority.isSuperUser) {
+    if (targetAuthority.appRole === "SuperUser") {
+      const error = new Error("Only a SuperUser can change another SuperUser.");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (normalizedRole === "SuperUser") {
+      const error = new Error("Only a SuperUser can assign the SuperUser role.");
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
+  if (
+    currentUser?.dbId === targetUserId &&
+    actorAuthority.appRole === "SuperUser" &&
+    normalizedRole !== "SuperUser"
+  ) {
+    const error = new Error("The active SuperUser session cannot demote itself.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await query(
+    `
+      update app_users
+      set
+        app_role = $2,
+        updated_at = now()
+      where id = $1
+    `,
+    [targetUserId, normalizedRole],
+  );
+
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
+  return bootstrap.staff.find((user) => user.dbId === targetUserId) ?? null;
+}
+
+export async function updateUserIdentity(targetUserId, input, currentUser) {
+  assertRoleAtLeast(
+    currentUser,
+    "Administrator",
+    "Administrator access is required to update user details.",
+  );
+
+  const normalizedEmail = normalizeLoginEmail(input?.email);
+  const normalizedUsername = normalizeLoginUsername(input?.username);
+
+  if (!normalizedEmail) {
+    const error = new Error("Email is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!normalizedUsername) {
+    const error = new Error("Username is required and must be alphanumeric only.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  if (!emailPattern.test(normalizedEmail)) {
+    const error = new Error("A valid email address is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const duplicateResult = await query(
+    `
+      select id
+      from app_users
+      where lower(email) = $1
+        and id <> $2
+      union all
+      select id
+      from app_users
+      where lower(login_username) = lower($3)
+        and id <> $2
+      union all
+      select user_id as id
+      from app_auth_accounts
+      where lower(login_email) = $1
+        and user_id <> $2
+      limit 1
+    `,
+    [normalizedEmail, targetUserId, normalizedUsername],
+  );
+
+  if (duplicateResult.rowCount > 0) {
+    const error = new Error("Another user already has that email address or username.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const updatedUserResult = await query(
+    `
+      update app_users
+      set
+        email = $2,
+        login_username = $3,
+        updated_at = now()
+      where id = $1
+      returning id
+    `,
+    [targetUserId, normalizedEmail, normalizedUsername],
+  );
+
+  if (updatedUserResult.rowCount === 0) {
+    const error = new Error("User was not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await query(
+    `
+      update app_auth_accounts
+      set
+        login_email = $2,
+        updated_at = now()
+      where user_id = $1
+    `,
+    [targetUserId, normalizedEmail],
+  );
+
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
+  return bootstrap.staff.find((user) => user.dbId === targetUserId) ?? null;
+}
+
+export async function resetUserPassword(targetUserId, currentUser) {
+  assertRoleAtLeast(
+    currentUser,
+    "Administrator",
+    "Administrator access is required to reset passwords.",
+  );
+
+  const userResult = await query(
+    `
+      select
+        id,
+        full_name,
+        email,
+        login_username
+      from app_users
+      where id = $1
+      limit 1
+    `,
+    [targetUserId],
+  );
+
+  if (userResult.rowCount === 0) {
+    const error = new Error("User was not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const user = userResult.rows[0];
+  const loginEmail = normalizeLoginEmail(user.email);
+  const loginUsername =
+    normalizeLoginUsername(user.login_username) ||
+    generateLoginUsername(user.full_name, loginEmail || targetUserId);
+
+  if (!loginEmail) {
+    const error = new Error("Set an email address before generating a password.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const password = generateRandomPassword(10);
+  const passwordHash = createPasswordHash(password);
+
+  await query(
+    `
+      insert into app_auth_accounts (
+        user_id,
+        login_email,
+        password_hash,
+        is_active
+      )
+      values ($1, $2, $3, true)
+      on conflict (user_id) do update
+      set
+        login_email = excluded.login_email,
+        password_hash = excluded.password_hash,
+        is_active = true,
+        updated_at = now()
+    `,
+    [targetUserId, loginEmail, passwordHash],
+  );
+
+  await query(
+    `
+      update app_users
+      set
+        login_username = $2,
+        updated_at = now()
+      where id = $1
+    `,
+    [targetUserId, loginUsername],
+  );
+
+  return {
+    userId: targetUserId,
+    email: loginEmail,
+    username: loginUsername,
+    password,
+    message: `Temporary password generated for ${user.full_name}.`,
+  };
 }
