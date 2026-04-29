@@ -217,6 +217,41 @@ export function AppDataProvider({ children }) {
     [refresh],
   );
 
+  const createUser = useCallback(
+    async (payload) => {
+      const result = await apiRequest("/api/users", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
+  const setUserLoginAccess = useCallback(
+    async (userId, isActive) => {
+      const result = await apiRequest(`/api/users/${userId}/login-access`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive }),
+      });
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
+  const inviteUserLogin = useCallback(
+    async (userId) => {
+      const result = await apiRequest(`/api/users/${userId}/login-invite`, {
+        method: "POST",
+      });
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
   const value = useMemo(
     () => ({
       ...data,
@@ -231,13 +266,17 @@ export function AppDataProvider({ children }) {
       createEstimate,
       updateTimesheetStatus,
       updateSupplierInvoiceStatus,
+      createUser,
       updateUserRole,
       updateUserIdentity,
+      setUserLoginAccess,
+      inviteUserLogin,
       resetUserPassword,
     }),
     [
       createEstimate,
       createJob,
+      createUser,
       data,
       error,
       authError,
@@ -246,9 +285,11 @@ export function AppDataProvider({ children }) {
       loading,
       logout,
       refresh,
+      inviteUserLogin,
       updateSupplierInvoiceStatus,
       updateTimesheetStatus,
       resetUserPassword,
+      setUserLoginAccess,
       updateUserIdentity,
       updateUserRole,
     ],

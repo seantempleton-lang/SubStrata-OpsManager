@@ -42,8 +42,11 @@ export default function App() {
     createJob,
     createEstimate,
     updateTimesheetStatus,
+    createUser,
     updateUserRole,
     updateUserIdentity,
+    setUserLoginAccess,
+    inviteUserLogin,
     resetUserPassword,
   } = useAppData();
 
@@ -382,8 +385,11 @@ export default function App() {
             <AdminScreen
               currentUser={currentUser}
               staff={staff}
+              onCreateUser={createUser}
               onUpdateUserRole={updateUserRole}
               onUpdateUserIdentity={updateUserIdentity}
+              onSetUserLoginAccess={setUserLoginAccess}
+              onInviteUserLogin={inviteUserLogin}
               onResetUserPassword={resetUserPassword}
             />
           )}

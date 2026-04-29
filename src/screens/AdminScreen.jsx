@@ -10,6 +10,13 @@ const APP_ROLES = [
   "FieldUser",
 ];
 
+function formatDateTime(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleString();
+}
+
 function roleTone(appRole) {
   switch (appRole) {
     case "SuperUser":
@@ -28,8 +35,11 @@ function roleTone(appRole) {
 export default function AdminScreen({
   currentUser = null,
   staff = [],
+  onCreateUser,
   onUpdateUserRole,
   onUpdateUserIdentity,
+  onSetUserLoginAccess,
+  onInviteUserLogin,
   onResetUserPassword,
 }) {
   const [search, setSearch] = useState("");
@@ -37,6 +47,19 @@ export default function AdminScreen({
   const [feedback, setFeedback] = useState(null);
   const [emailDrafts, setEmailDrafts] = useState({});
   const [usernameDrafts, setUsernameDrafts] = useState({});
+  const [newUser, setNewUser] = useState({
+    employeeCode: "",
+    fullName: "",
+    initials: "",
+    roleTitle: "",
+    appRole: "FieldUser",
+    division: "",
+    region: "",
+    email: "",
+    phone: "",
+    username: "",
+    enableLogin: true,
+  });
 
   useEffect(() => {
     setEmailDrafts(
@@ -88,6 +111,40 @@ export default function AdminScreen({
     [staff],
   );
 
+  async function handleCreateUser() {
+    setSavingUserId("new-user");
+    setFeedback(null);
+
+    try {
+      const result = await onCreateUser(newUser);
+      setFeedback({
+        type: "success",
+        message: result.message,
+        setupLink: result.setupLink,
+        email: result.email,
+        username: result.username,
+        tokenExpiresAt: result.tokenExpiresAt,
+      });
+      setNewUser({
+        employeeCode: "",
+        fullName: "",
+        initials: "",
+        roleTitle: "",
+        appRole: "FieldUser",
+        division: "",
+        region: "",
+        email: "",
+        phone: "",
+        username: "",
+        enableLogin: true,
+      });
+    } catch (error) {
+      setFeedback({ type: "error", message: error.message });
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
   async function handleRoleChange(userId, appRole) {
     setSavingUserId(userId);
     setFeedback(null);
@@ -128,9 +185,46 @@ export default function AdminScreen({
       setFeedback({
         type: "success",
         message: result.message,
-        password: result.password,
+        setupLink: result.setupLink,
         email: result.email,
+        username: result.username,
+        tokenExpiresAt: result.tokenExpiresAt,
       });
+    } catch (error) {
+      setFeedback({ type: "error", message: error.message });
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function handleInviteUser(userId) {
+    setSavingUserId(userId);
+    setFeedback(null);
+
+    try {
+      const result = await onInviteUserLogin(userId);
+      setFeedback({
+        type: "success",
+        message: result.message,
+        setupLink: result.setupLink,
+        email: result.email,
+        username: result.username,
+        tokenExpiresAt: result.tokenExpiresAt,
+      });
+    } catch (error) {
+      setFeedback({ type: "error", message: error.message });
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function handleLoginAccessToggle(userId, isActive) {
+    setSavingUserId(userId);
+    setFeedback(null);
+
+    try {
+      const result = await onSetUserLoginAccess(userId, isActive);
+      setFeedback({ type: "success", message: result.message });
     } catch (error) {
       setFeedback({ type: "error", message: error.message });
     } finally {
@@ -215,6 +309,178 @@ export default function AdminScreen({
         />
       </div>
 
+      <div
+        style={{
+          background: COLORS.white,
+          borderRadius: 12,
+          border: `1px solid ${COLORS.border}`,
+          padding: 18,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          display: "grid",
+          gap: 14,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.textPrimary }}>
+            New user registration
+          </div>
+          <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 4 }}>
+            Create a new SubStrata user, assign their authority, and optionally generate login access immediately.
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}>
+          {[
+            ["employeeCode", "Employee code", "EMP-011"],
+            ["fullName", "Full name", "Jordan Smith"],
+            ["initials", "Initials", "JS"],
+            ["roleTitle", "Role title", "Driller"],
+            ["email", "Email", "user@drilling.co.nz"],
+            ["phone", "Phone", "021 000 0000"],
+            ["username", "Username", "JordanSmith"],
+          ].map(([key, label, placeholder]) => (
+            <label key={key} style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.textSecondary }}>{label}</span>
+              <input
+                value={newUser[key]}
+                onChange={(event) =>
+                  setNewUser((current) => ({
+                    ...current,
+                    [key]: event.target.value,
+                  }))
+                }
+                placeholder={placeholder}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 13,
+                  boxSizing: "border-box",
+                }}
+              />
+            </label>
+          ))}
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.textSecondary }}>Division</span>
+            <select
+              value={newUser.division}
+              onChange={(event) =>
+                setNewUser((current) => ({
+                  ...current,
+                  division: event.target.value,
+                }))
+              }
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+                fontSize: 13,
+                background: COLORS.white,
+              }}
+            >
+              <option value="">Unassigned</option>
+              {["Water", "Geotech", "Operations", "Finance", "HSE"].map((division) => (
+                <option key={division} value={division}>
+                  {division}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.textSecondary }}>Region</span>
+            <select
+              value={newUser.region}
+              onChange={(event) =>
+                setNewUser((current) => ({
+                  ...current,
+                  region: event.target.value,
+                }))
+              }
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+                fontSize: 13,
+                background: COLORS.white,
+              }}
+            >
+              <option value="">Unassigned</option>
+              {["North", "South"].map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.textSecondary }}>Authority</span>
+            <select
+              value={newUser.appRole}
+              onChange={(event) =>
+                setNewUser((current) => ({
+                  ...current,
+                  appRole: event.target.value,
+                }))
+              }
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+                fontSize: 13,
+                background: COLORS.white,
+              }}
+            >
+              {APP_ROLES.map((appRole) => (
+                <option key={appRole} value={appRole}>
+                  {appRole}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: COLORS.textPrimary }}>
+          <input
+            type="checkbox"
+            checked={newUser.enableLogin}
+            onChange={(event) =>
+              setNewUser((current) => ({
+                ...current,
+                enableLogin: event.target.checked,
+              }))
+            }
+          />
+          Generate app login access now
+        </label>
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            onClick={handleCreateUser}
+            disabled={savingUserId === "new-user"}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: COLORS.amber,
+              color: COLORS.navy,
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: savingUserId === "new-user" ? "wait" : "pointer",
+              opacity: savingUserId === "new-user" ? 0.7 : 1,
+            }}
+          >
+            {savingUserId === "new-user" ? "Creating..." : "Create User"}
+          </button>
+        </div>
+      </div>
+
       {feedback && (
         <div
           style={{
@@ -228,9 +494,9 @@ export default function AdminScreen({
           }}
         >
           <div>{feedback.message}</div>
-          {feedback.password && (
+          {feedback.setupLink && (
             <div style={{ marginTop: 8, fontWeight: 600 }}>
-              Temporary password for {feedback.email}:
+              Password setup link for {feedback.email}:
               <span
                 style={{
                   display: "inline-block",
@@ -243,12 +509,17 @@ export default function AdminScreen({
                   fontFamily: "Consolas, 'Courier New', monospace",
                 }}
               >
-                {feedback.password}
+                {feedback.setupLink}
               </span>
               {feedback.username && (
                 <span style={{ marginLeft: 12, color: COLORS.textSecondary }}>
                   Username: {feedback.username}
                 </span>
+              )}
+              {feedback.tokenExpiresAt && (
+                <div style={{ marginTop: 6, color: COLORS.textSecondary, fontWeight: 500 }}>
+                  Expires: {new Date(feedback.tokenExpiresAt).toLocaleString()}
+                </div>
               )}
             </div>
           )}
@@ -292,6 +563,45 @@ export default function AdminScreen({
             const tone = roleTone(person.appRole);
             const isSaving = savingUserId === person.dbId;
             const draftEmail = emailDrafts[person.dbId] ?? "";
+            const draftUsername = usernameDrafts[person.dbId] ?? "";
+            const hasPendingInvite = person.pendingPasswordPurpose === "invite";
+            const hasPendingReset = person.pendingPasswordPurpose === "reset";
+            const pendingPasswordExpiry = formatDateTime(person.pendingPasswordExpiresAt);
+            const lastLoginAt = formatDateTime(person.lastLoginAt);
+            const lockedUntil = formatDateTime(person.lockedUntil);
+            const loginStatusLines = [];
+
+            if (hasPendingInvite) {
+              loginStatusLines.push(
+                pendingPasswordExpiry
+                  ? `Invite pending until ${pendingPasswordExpiry}`
+                  : "Invite pending",
+              );
+            } else if (hasPendingReset) {
+              loginStatusLines.push(
+                pendingPasswordExpiry
+                  ? `Reset link pending until ${pendingPasswordExpiry}`
+                  : "Reset link pending",
+              );
+            } else if (person.hasAuthAccount) {
+              loginStatusLines.push(
+                person.loginAccountActive ? "Login enabled" : "Login account exists but is disabled",
+              );
+            } else {
+              loginStatusLines.push("No login account yet");
+            }
+
+            if (lastLoginAt) {
+              loginStatusLines.push(`Last login ${lastLoginAt}`);
+            } else if (person.hasAuthAccount && !hasPendingInvite) {
+              loginStatusLines.push("No completed login yet");
+            }
+
+            if (lockedUntil) {
+              loginStatusLines.push(`Locked until ${lockedUntil}`);
+            } else if (person.failedLoginCount > 0) {
+              loginStatusLines.push(`Recent failed sign-ins: ${person.failedLoginCount}`);
+            }
 
             return (
               <div
@@ -380,11 +690,31 @@ export default function AdminScreen({
                         cursor: isSaving ? "wait" : "pointer",
                       }}
                     >
-                      Save Email
+                      Save Details
+                    </button>
+                    <button
+                      onClick={() => handleInviteUser(person.dbId)}
+                      disabled={isSaving || !draftEmail.trim() || !draftUsername.trim() || person.hasAuthAccount}
+                      style={{
+                        padding: "7px 10px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "#0F766E",
+                        color: COLORS.white,
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: isSaving ? "wait" : "pointer",
+                        opacity:
+                          isSaving || !draftEmail.trim() || !draftUsername.trim() || person.hasAuthAccount
+                            ? 0.6
+                            : 1,
+                      }}
+                    >
+                      {hasPendingInvite ? "Reissue Invite" : "Send Invite"}
                     </button>
                     <button
                       onClick={() => handlePasswordReset(person.dbId)}
-                      disabled={isSaving || !draftEmail.trim()}
+                      disabled={isSaving || !draftEmail.trim() || !person.hasAuthAccount}
                       style={{
                         padding: "7px 10px",
                         borderRadius: 8,
@@ -394,14 +724,35 @@ export default function AdminScreen({
                         fontSize: 12,
                         fontWeight: 800,
                         cursor: isSaving ? "wait" : "pointer",
-                        opacity: isSaving || !draftEmail.trim() ? 0.6 : 1,
+                        opacity: isSaving || !draftEmail.trim() || !person.hasAuthAccount ? 0.6 : 1,
                       }}
                     >
-                      New Password
+                        Reset Link
+                      </button>
+                    <button
+                      onClick={() => handleLoginAccessToggle(person.dbId, !person.loginAccountActive)}
+                      disabled={isSaving || !person.hasAuthAccount}
+                      style={{
+                        padding: "7px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${COLORS.border}`,
+                        background: person.loginAccountActive ? "#FEF2F2" : "#ECFDF5",
+                        color: person.loginAccountActive ? COLORS.red : COLORS.green,
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: isSaving ? "wait" : "pointer",
+                        opacity: isSaving || !person.hasAuthAccount ? 0.6 : 1,
+                      }}
+                    >
+                      {person.loginAccountActive ? "Disable Login" : "Enable Login"}
                     </button>
                   </div>
-                  <div style={{ fontSize: 11, color: COLORS.textMuted }}>
-                    {person.hasAuthAccount ? "Username and password enabled" : "No login account yet"}
+                  <div style={{ display: "grid", gap: 3 }}>
+                    {loginStatusLines.map((line) => (
+                      <div key={line} style={{ fontSize: 11, color: COLORS.textMuted }}>
+                        {line}
+                      </div>
+                    ))}
                   </div>
                 </div>
 

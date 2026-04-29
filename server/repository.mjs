@@ -1,10 +1,10 @@
-import { query } from "./db.mjs";
+import { pool, query } from "./db.mjs";
 import {
-  createPasswordHash,
   generateLoginUsername,
-  generateRandomPassword,
+  issuePasswordSetupToken,
   normalizeLoginEmail,
   normalizeLoginUsername,
+  recordAuthEvent,
 } from "./auth.mjs";
 import {
   assertRoleAtLeast,
@@ -62,6 +62,54 @@ function titleize(value) {
     : "";
 }
 
+function deriveInitials(fullName) {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+}
+
+function normalizeOptionalText(value) {
+  const normalized = String(value ?? "").trim();
+  return normalized || null;
+}
+
+function assertCanAssignRole(currentUser, targetRole, nextRole) {
+  const actorAuthority = getUserAuthoritySummary(currentUser);
+  const currentTargetRole = normalizeAppRole(targetRole);
+  const requestedRole = normalizeAppRole(nextRole);
+
+  if (!actorAuthority.isSuperUser) {
+    if (currentTargetRole === "SuperUser") {
+      const error = new Error("Only a SuperUser can manage another SuperUser.");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (requestedRole === "SuperUser") {
+      const error = new Error("Only a SuperUser can assign the SuperUser role.");
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
+  return requestedRole;
+}
+
+function assertValidLoginEmail(email) {
+  const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  if (!emailPattern.test(email)) {
+    const error = new Error("A valid email address is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
 function estimateTotal(estimate) {
   return estimate.sections.reduce(
     (sum, section) =>
@@ -113,7 +161,13 @@ async function fetchRows() {
         phone,
         metadata,
         auth_login_email,
-        has_auth_account
+        has_auth_account,
+        auth_is_active,
+        auth_last_login_at,
+        auth_failed_login_count,
+        auth_locked_until,
+        pending_password_purpose,
+        pending_password_expires_at
       from (
         select
           u.id,
@@ -128,9 +182,27 @@ async function fetchRows() {
           u.phone,
           u.metadata,
           a.login_email as auth_login_email,
-          (a.id is not null) as has_auth_account
+          (a.id is not null) as has_auth_account,
+          coalesce(a.is_active, false) as auth_is_active,
+          a.last_login_at as auth_last_login_at,
+          coalesce(a.failed_login_count, 0) as auth_failed_login_count,
+          a.locked_until as auth_locked_until,
+          pt.purpose as pending_password_purpose,
+          pt.expires_at as pending_password_expires_at
         from app_users u
         left join app_auth_accounts a on a.user_id = u.id
+        left join lateral (
+          select
+            purpose,
+            expires_at
+          from app_password_tokens
+          where user_id = u.id
+            and consumed_at is null
+            and revoked_at is null
+            and expires_at > now()
+          order by created_at desc
+          limit 1
+        ) pt on true
         where u.is_active = true
       ) users
       order by full_name asc
@@ -551,6 +623,12 @@ export async function getBootstrapData(currentUserId) {
     email: user.email,
     loginEmail: user.auth_login_email ?? user.email,
     hasAuthAccount: Boolean(user.has_auth_account),
+    loginAccountActive: Boolean(user.auth_is_active),
+    lastLoginAt: user.auth_last_login_at,
+    failedLoginCount: Number(user.auth_failed_login_count ?? 0),
+    lockedUntil: user.auth_locked_until,
+    pendingPasswordPurpose: user.pending_password_purpose ?? null,
+    pendingPasswordExpiresAt: user.pending_password_expires_at ?? null,
     phone: user.phone,
     metadata: parseJson(user.metadata, {}),
   }));
@@ -1267,7 +1345,6 @@ export async function updateUserAuthority(targetUserId, appRole, currentUser) {
     throw error;
   }
 
-  const normalizedRole = normalizeAppRole(appRole);
   const actorAuthority = getUserAuthoritySummary(currentUser);
 
   const existingUserResult = await query(
@@ -1290,23 +1367,7 @@ export async function updateUserAuthority(targetUserId, appRole, currentUser) {
   }
 
   const targetUser = existingUserResult.rows[0];
-  const targetAuthority = getUserAuthoritySummary({
-    appRole: targetUser.app_role,
-  });
-
-  if (!actorAuthority.isSuperUser) {
-    if (targetAuthority.appRole === "SuperUser") {
-      const error = new Error("Only a SuperUser can change another SuperUser.");
-      error.statusCode = 403;
-      throw error;
-    }
-
-    if (normalizedRole === "SuperUser") {
-      const error = new Error("Only a SuperUser can assign the SuperUser role.");
-      error.statusCode = 403;
-      throw error;
-    }
-  }
+  const normalizedRole = assertCanAssignRole(currentUser, targetUser.app_role, appRole);
 
   if (
     currentUser?.dbId === targetUserId &&
@@ -1333,6 +1394,170 @@ export async function updateUserAuthority(targetUserId, appRole, currentUser) {
   return bootstrap.staff.find((user) => user.dbId === targetUserId) ?? null;
 }
 
+export async function createUserAccount(input, currentUser, auditContext = null) {
+  assertRoleAtLeast(
+    currentUser,
+    "Administrator",
+    "Administrator access is required to create users.",
+  );
+
+  const employeeCode = String(input?.employeeCode ?? "").trim();
+  const fullName = String(input?.fullName ?? "").trim();
+  const roleTitle = String(input?.roleTitle ?? "").trim();
+  const appRole = String(input?.appRole ?? "").trim();
+  const usernameInput = String(input?.username ?? "").trim();
+  const enableLogin = Boolean(input?.enableLogin);
+  const email = normalizeLoginEmail(input?.email);
+  const phone = normalizeOptionalText(input?.phone);
+  const division = normalizeOptionalText(input?.division);
+  const region = normalizeOptionalText(input?.region);
+  const initials = String(input?.initials ?? "").trim().toUpperCase() || deriveInitials(fullName);
+  const username = normalizeLoginUsername(usernameInput || generateLoginUsername(fullName, employeeCode));
+
+  if (!employeeCode) {
+    throw new Error("Employee code is required.");
+  }
+
+  if (!fullName) {
+    throw new Error("Full name is required.");
+  }
+
+  if (!roleTitle) {
+    throw new Error("Role title is required.");
+  }
+
+  if (!initials) {
+    throw new Error("Initials are required.");
+  }
+
+  if (!username) {
+    throw new Error("Username is required and must be alphanumeric only.");
+  }
+
+  if (!isKnownAppRole(appRole)) {
+    throw new Error(`Unsupported app role "${appRole}".`);
+  }
+
+  const normalizedRole = assertCanAssignRole(currentUser, null, appRole);
+
+  if (enableLogin && !email) {
+    throw new Error("Email is required when creating login access.");
+  }
+
+  if (email) {
+    assertValidLoginEmail(email);
+  }
+
+  const duplicateResult = await query(
+    `
+      select employee_code as match_value
+      from app_users
+      where employee_code = $1
+      union all
+      select lower(login_username) as match_value
+      from app_users
+      where lower(login_username) = lower($2)
+      union all
+      select lower(email) as match_value
+      from app_users
+      where $3 <> ''
+        and lower(email) = $3
+      union all
+      select lower(login_email) as match_value
+      from app_auth_accounts
+      where $3 <> ''
+        and lower(login_email) = $3
+      limit 1
+    `,
+    [employeeCode, username, email],
+  );
+
+  if (duplicateResult.rowCount > 0) {
+    throw new Error("Employee code, username, or email already exists.");
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("begin");
+
+    const userInsert = await client.query(
+      `
+        insert into app_users (
+          employee_code,
+          full_name,
+          initials,
+          role_title,
+          app_role,
+          login_username,
+          division,
+          region,
+          email,
+          phone,
+          is_active
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+        returning id
+      `,
+      [
+        employeeCode,
+        fullName,
+        initials,
+        roleTitle,
+        normalizedRole,
+        username,
+        division,
+        region,
+        email || null,
+        phone,
+      ],
+    );
+
+    let passwordSetup = null;
+    if (enableLogin) {
+      passwordSetup = await issuePasswordSetupToken({
+        userId: userInsert.rows[0].id,
+        purpose: "invite",
+        createdByUserId: currentUser?.dbId ?? null,
+        client,
+        auditContext,
+      });
+
+      await client.query(
+        `
+          update app_users
+          set
+            email = $2,
+            updated_at = now()
+          where id = $1
+        `,
+        [userInsert.rows[0].id, email],
+      );
+    }
+
+    await client.query("commit");
+
+    const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
+    const user = bootstrap.staff.find((person) => person.dbId === userInsert.rows[0].id) ?? null;
+
+    return {
+      user,
+      email: enableLogin ? email : null,
+      username,
+      setupLink: passwordSetup?.link ?? null,
+      tokenExpiresAt: passwordSetup?.expiresAt ?? null,
+      message: enableLogin
+        ? `New user created and invite link generated for ${fullName}.`
+        : `New user created for ${fullName}. Login access can be enabled later.`,
+    };
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function updateUserIdentity(targetUserId, input, currentUser) {
   assertRoleAtLeast(
     currentUser,
@@ -1342,6 +1567,7 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
 
   const normalizedEmail = normalizeLoginEmail(input?.email);
   const normalizedUsername = normalizeLoginUsername(input?.username);
+  const actorAuthority = getUserAuthoritySummary(currentUser);
 
   if (!normalizedEmail) {
     const error = new Error("Email is required.");
@@ -1355,12 +1581,7 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
     throw error;
   }
 
-  const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  if (!emailPattern.test(normalizedEmail)) {
-    const error = new Error("A valid email address is required.");
-    error.statusCode = 400;
-    throw error;
-  }
+  assertValidLoginEmail(normalizedEmail);
 
   const duplicateResult = await query(
     `
@@ -1386,6 +1607,28 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
   if (duplicateResult.rowCount > 0) {
     const error = new Error("Another user already has that email address or username.");
     error.statusCode = 400;
+    throw error;
+  }
+
+  const targetUserResult = await query(
+    `
+      select app_role
+      from app_users
+      where id = $1
+      limit 1
+    `,
+    [targetUserId],
+  );
+
+  if (targetUserResult.rowCount === 0) {
+    const error = new Error("User was not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!actorAuthority.isSuperUser && normalizeAppRole(targetUserResult.rows[0].app_role) === "SuperUser") {
+    const error = new Error("Only a SuperUser can update another SuperUser.");
+    error.statusCode = 403;
     throw error;
   }
 
@@ -1423,7 +1666,134 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
   return bootstrap.staff.find((user) => user.dbId === targetUserId) ?? null;
 }
 
-export async function resetUserPassword(targetUserId, currentUser) {
+export async function inviteUserLoginAccess(targetUserId, currentUser, auditContext = null) {
+  assertRoleAtLeast(
+    currentUser,
+    "Administrator",
+    "Administrator access is required to invite users.",
+  );
+
+  const userResult = await query(
+    `
+      select
+        u.id,
+        u.full_name,
+        u.email,
+        u.login_username,
+        u.app_role,
+        a.id as account_id,
+        a.is_active as account_is_active
+      from app_users u
+      left join app_auth_accounts a on a.user_id = u.id
+      where u.id = $1
+      limit 1
+    `,
+    [targetUserId],
+  );
+
+  if (userResult.rowCount === 0) {
+    const error = new Error("User was not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const user = userResult.rows[0];
+  const actorAuthority = getUserAuthoritySummary(currentUser);
+
+  if (!actorAuthority.isSuperUser && normalizeAppRole(user.app_role) === "SuperUser") {
+    const error = new Error("Only a SuperUser can invite another SuperUser.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const loginEmail = normalizeLoginEmail(user.email);
+  if (!loginEmail) {
+    const error = new Error("Set an email address before sending an invite.");
+    error.statusCode = 400;
+    throw error;
+  }
+  assertValidLoginEmail(loginEmail);
+
+  const loginUsername =
+    normalizeLoginUsername(user.login_username) ||
+    generateLoginUsername(user.full_name, loginEmail || targetUserId);
+
+  if (!loginUsername) {
+    const error = new Error("Set a valid username before sending an invite.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const duplicateResult = await query(
+    `
+      select id
+      from app_users
+      where lower(login_username) = lower($1)
+        and id <> $2
+      union all
+      select user_id as id
+      from app_auth_accounts
+      where lower(login_email) = $3
+        and user_id <> $2
+      limit 1
+    `,
+    [loginUsername, targetUserId, loginEmail],
+  );
+
+  if (duplicateResult.rowCount > 0) {
+    const error = new Error("Another user already has that email address or username.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await query(
+    `
+      update app_users
+      set
+        email = $2,
+        login_username = $3,
+        updated_at = now()
+      where id = $1
+    `,
+    [targetUserId, loginEmail, loginUsername],
+  );
+
+  if (user.account_id) {
+    await query(
+      `
+        update app_auth_accounts
+        set
+          login_email = $2,
+          updated_at = now()
+        where user_id = $1
+      `,
+      [targetUserId, loginEmail],
+    );
+  }
+
+  const passwordSetup = await issuePasswordSetupToken({
+    userId: targetUserId,
+    purpose: "invite",
+    createdByUserId: currentUser?.dbId ?? null,
+    auditContext,
+  });
+
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
+  const bootstrapUser = bootstrap.staff.find((person) => person.dbId === targetUserId) ?? null;
+
+  return {
+    user: bootstrapUser,
+    email: loginEmail,
+    username: loginUsername,
+    setupLink: passwordSetup.link,
+    tokenExpiresAt: passwordSetup.expiresAt,
+    message: user.account_id
+      ? `Fresh invite link generated for ${user.full_name}.`
+      : `Login onboarding started for ${user.full_name}. Invite link generated.`,
+  };
+}
+
+export async function resetUserPassword(targetUserId, currentUser, auditContext = null) {
   assertRoleAtLeast(
     currentUser,
     "Administrator",
@@ -1436,7 +1806,8 @@ export async function resetUserPassword(targetUserId, currentUser) {
         id,
         full_name,
         email,
-        login_username
+        login_username,
+        app_role
       from app_users
       where id = $1
       limit 1
@@ -1451,10 +1822,15 @@ export async function resetUserPassword(targetUserId, currentUser) {
   }
 
   const user = userResult.rows[0];
+  const actorAuthority = getUserAuthoritySummary(currentUser);
+
+  if (!actorAuthority.isSuperUser && normalizeAppRole(user.app_role) === "SuperUser") {
+    const error = new Error("Only a SuperUser can reset another SuperUser password.");
+    error.statusCode = 403;
+    throw error;
+  }
+
   const loginEmail = normalizeLoginEmail(user.email);
-  const loginUsername =
-    normalizeLoginUsername(user.login_username) ||
-    generateLoginUsername(user.full_name, loginEmail || targetUserId);
 
   if (!loginEmail) {
     const error = new Error("Set an email address before generating a password.");
@@ -1462,27 +1838,9 @@ export async function resetUserPassword(targetUserId, currentUser) {
     throw error;
   }
 
-  const password = generateRandomPassword(10);
-  const passwordHash = createPasswordHash(password);
-
-  await query(
-    `
-      insert into app_auth_accounts (
-        user_id,
-        login_email,
-        password_hash,
-        is_active
-      )
-      values ($1, $2, $3, true)
-      on conflict (user_id) do update
-      set
-        login_email = excluded.login_email,
-        password_hash = excluded.password_hash,
-        is_active = true,
-        updated_at = now()
-    `,
-    [targetUserId, loginEmail, passwordHash],
-  );
+  const loginUsername =
+    normalizeLoginUsername(user.login_username) ||
+    generateLoginUsername(user.full_name, loginEmail || targetUserId);
 
   await query(
     `
@@ -1495,11 +1853,101 @@ export async function resetUserPassword(targetUserId, currentUser) {
     [targetUserId, loginUsername],
   );
 
+  const passwordSetup = await issuePasswordSetupToken({
+    userId: targetUserId,
+    purpose: "reset",
+    createdByUserId: currentUser?.dbId ?? null,
+    auditContext,
+  });
+
   return {
     userId: targetUserId,
     email: loginEmail,
     username: loginUsername,
-    password,
-    message: `Temporary password generated for ${user.full_name}.`,
+    setupLink: passwordSetup.link,
+    tokenExpiresAt: passwordSetup.expiresAt,
+    message: `Password reset link generated for ${user.full_name}.`,
+  };
+}
+
+export async function setUserLoginAccess(targetUserId, isActive, currentUser, auditContext = null) {
+  assertRoleAtLeast(
+    currentUser,
+    "Administrator",
+    "Administrator access is required to change login access.",
+  );
+
+  const existingUserResult = await query(
+    `
+      select
+        u.id,
+        u.full_name,
+        u.email,
+        u.app_role,
+        a.id as account_id,
+        a.is_active as account_is_active
+      from app_users u
+      left join app_auth_accounts a on a.user_id = u.id
+      where u.id = $1
+      limit 1
+    `,
+    [targetUserId],
+  );
+
+  if (existingUserResult.rowCount === 0) {
+    const error = new Error("User was not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const existingUser = existingUserResult.rows[0];
+  const actorAuthority = getUserAuthoritySummary(currentUser);
+
+  if (!actorAuthority.isSuperUser && normalizeAppRole(existingUser.app_role) === "SuperUser") {
+    const error = new Error("Only a SuperUser can change another SuperUser login access.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (currentUser?.dbId === targetUserId && !Boolean(isActive)) {
+    const error = new Error("You cannot disable the login account for your current session.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!existingUser.account_id) {
+    const error = new Error("No login account exists yet. Generate a password first.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await query(
+    `
+      update app_auth_accounts
+      set
+        is_active = $2,
+        updated_at = now()
+      where user_id = $1
+    `,
+    [targetUserId, Boolean(isActive)],
+  );
+
+  await recordAuthEvent({
+    eventType: Boolean(isActive) ? "login_access_enabled" : "login_access_disabled",
+    accountId: existingUser.account_id,
+    userId: targetUserId,
+    ipAddress: auditContext?.ipAddress,
+    userAgent: auditContext?.userAgent,
+    metadata: {
+      changedByUserId: currentUser?.dbId ?? null,
+    },
+  });
+
+  const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
+  return {
+    user: bootstrap.staff.find((person) => person.dbId === targetUserId) ?? null,
+    message: Boolean(isActive)
+      ? `Login access enabled for ${existingUser.full_name}.`
+      : `Login access disabled for ${existingUser.full_name}.`,
   };
 }

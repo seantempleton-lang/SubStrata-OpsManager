@@ -5,10 +5,13 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import {
+  createUserAccount,
   createEstimate,
   createJob,
   getBootstrapData,
+  inviteUserLoginAccess,
   resetUserPassword,
+  setUserLoginAccess,
   updateTimesheetStatus,
   updateSupplierInvoiceStatus,
   updateUserAuthority,
@@ -16,6 +19,8 @@ import {
 } from "./repository.mjs";
 import {
   clearSessionCookie,
+  completePasswordSetup,
+  getPasswordTokenPreview,
   loginWithPassword,
   requireAuth,
   revokeSession,
@@ -31,6 +36,22 @@ const distDir = path.join(repoRoot, "dist");
 const app = express();
 
 app.use(express.json({ limit: "2mb" }));
+
+function getAuditContext(req) {
+  const forwardedForHeader = req.headers["x-forwarded-for"];
+  const forwardedFor = Array.isArray(forwardedForHeader)
+    ? forwardedForHeader[0]
+    : forwardedForHeader;
+  const ipAddress = String(
+    forwardedFor?.split(",")[0] || req.socket?.remoteAddress || req.ip || "",
+  ).trim() || null;
+  const userAgent = String(req.headers["user-agent"] || "").trim() || null;
+
+  return {
+    ipAddress,
+    userAgent,
+  };
+}
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
@@ -50,7 +71,11 @@ app.get("/api/session", requireAuth, async (req, res) => {
 
 app.post("/api/session/login", async (req, res) => {
   try {
-    const session = await loginWithPassword(req.body.email, req.body.password);
+    const session = await loginWithPassword(
+      req.body.email,
+      req.body.password,
+      getAuditContext(req),
+    );
     setSessionCookie(res, session.sessionToken, session.expiresAt);
     res.status(201).json({
       authenticated: true,
@@ -58,12 +83,34 @@ app.post("/api/session/login", async (req, res) => {
       expiresAt: session.expiresAt,
     });
   } catch (error) {
-    res.status(401).json({ error: error.message });
+    res.status(error.statusCode ?? 401).json({ error: error.message });
+  }
+});
+
+app.post("/api/password-links/validate", async (req, res) => {
+  try {
+    const result = await getPasswordTokenPreview(req.body?.token, getAuditContext(req));
+    res.json(result);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
+  }
+});
+
+app.post("/api/password-links/complete", async (req, res) => {
+  try {
+    const result = await completePasswordSetup(
+      req.body?.token,
+      req.body?.password,
+      getAuditContext(req),
+    );
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
   }
 });
 
 app.delete("/api/session/logout", requireAuth, async (req, res) => {
-  await revokeSession(req.auth.sessionId);
+  await revokeSession(req.auth.sessionId, getAuditContext(req));
   clearSessionCookie(res);
   res.status(204).end();
 });
@@ -134,6 +181,15 @@ app.patch("/api/users/:id/role", requireAuth, async (req, res) => {
   }
 });
 
+app.post("/api/users", requireAuth, async (req, res) => {
+  try {
+    const result = await createUserAccount(req.body, req.auth.user, getAuditContext(req));
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
+  }
+});
+
 app.patch("/api/users/:id", requireAuth, async (req, res) => {
   try {
     const user = await updateUserIdentity(
@@ -147,11 +203,39 @@ app.patch("/api/users/:id", requireAuth, async (req, res) => {
   }
 });
 
+app.patch("/api/users/:id/login-access", requireAuth, async (req, res) => {
+  try {
+    const result = await setUserLoginAccess(
+      req.params.id,
+      req.body.isActive,
+      req.auth.user,
+      getAuditContext(req),
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
+  }
+});
+
+app.post("/api/users/:id/login-invite", requireAuth, async (req, res) => {
+  try {
+    const result = await inviteUserLoginAccess(
+      req.params.id,
+      req.auth.user,
+      getAuditContext(req),
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
+  }
+});
+
 app.post("/api/users/:id/reset-password", requireAuth, async (req, res) => {
   try {
     const result = await resetUserPassword(
       req.params.id,
       req.auth.user,
+      getAuditContext(req),
     );
     res.json(result);
   } catch (error) {
