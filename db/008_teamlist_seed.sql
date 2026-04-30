@@ -110,7 +110,7 @@ select
   full_name,
   upper(
     left(split_part(full_name, ' ', 1), 1) ||
-    left(nullif(split_part(full_name, ' ', 2), ''), 1)
+    coalesce(left(nullif(split_part(full_name, ' ', 2), ''), 1), '')
   ),
   'Team Member',
   'FieldUser',
