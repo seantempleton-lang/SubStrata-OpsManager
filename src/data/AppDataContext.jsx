@@ -53,14 +53,19 @@ export function AppDataProvider({ children }) {
   const [authError, setAuthError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  const loadBootstrapData = useCallback(async () => {
+    const payload = await apiRequest("/api/bootstrap");
+    setIsAuthenticated(true);
+    setData({ ...EMPTY_DATA, ...payload });
+    return payload;
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const payload = await apiRequest("/api/bootstrap");
-      setIsAuthenticated(true);
-      setData({ ...EMPTY_DATA, ...payload });
+      await loadBootstrapData();
     } catch (fetchError) {
       if (fetchError.status === 401) {
         setIsAuthenticated(false);
@@ -72,7 +77,7 @@ export function AppDataProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadBootstrapData]);
 
   useEffect(() => {
     async function loadInitialState() {
@@ -82,9 +87,7 @@ export function AppDataProvider({ children }) {
 
       try {
         await apiRequest("/api/session");
-        setIsAuthenticated(true);
-        const payload = await apiRequest("/api/bootstrap");
-        setData({ ...EMPTY_DATA, ...payload });
+        await loadBootstrapData();
       } catch (fetchError) {
         if (fetchError.status === 401) {
           setIsAuthenticated(false);
@@ -107,16 +110,16 @@ export function AppDataProvider({ children }) {
       try {
         await apiRequest("/api/session/login", {
           method: "POST",
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ username: email, email, password }),
         });
-        setIsAuthenticated(true);
-        await refresh();
+        await loadBootstrapData();
       } catch (loginFailure) {
+        setIsAuthenticated(false);
         setAuthError(loginFailure.message);
         throw loginFailure;
       }
     },
-    [refresh],
+    [loadBootstrapData],
   );
 
   const logout = useCallback(async () => {

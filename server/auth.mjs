@@ -309,7 +309,7 @@ export async function loginWithPassword(email, password, auditContext = {}) {
         userAgent,
         metadata: { reason: "unknown_login" },
       };
-      throw createStatusError("Invalid email or password.", 401);
+      throw createStatusError("Invalid username or password.", 401);
     }
 
     const account = accountResult.rows[0];
@@ -378,7 +378,7 @@ export async function loginWithPassword(email, password, auditContext = {}) {
         );
       }
 
-      throw createStatusError("Invalid email or password.", 401);
+      throw createStatusError("Invalid username or password.", 401);
     }
 
     const sessionToken = randomBytes(32).toString("hex");
@@ -504,6 +504,44 @@ function getQueryExecutor(client) {
   }
 
   return query;
+}
+
+export async function revokeAllUserSessions(userId, auditContext = {}, client = null) {
+  if (!userId) return 0;
+
+  const runQuery = getQueryExecutor(client);
+  const revokedSessions = await runQuery(
+    `
+      update app_sessions s
+      set
+        revoked_at = now(),
+        updated_at = now()
+      from app_auth_accounts a
+      where a.user_id = $1
+        and s.account_id = a.id
+        and s.revoked_at is null
+      returning s.id, s.account_id
+    `,
+    [userId],
+  );
+
+  if (revokedSessions.rowCount === 0) {
+    return 0;
+  }
+
+  await recordAuthEvent({
+    eventType: "sessions_revoked",
+    userId,
+    accountId: revokedSessions.rows[0]?.account_id ?? null,
+    ipAddress: auditContext?.ipAddress,
+    userAgent: auditContext?.userAgent,
+    metadata: {
+      revokedSessionCount: revokedSessions.rowCount,
+    },
+    client,
+  });
+
+  return revokedSessions.rowCount;
 }
 
 export async function recordAuthEvent({

@@ -5,6 +5,7 @@ import {
   normalizeLoginEmail,
   normalizeLoginUsername,
   recordAuthEvent,
+  revokeAllUserSessions,
 } from "./auth.mjs";
 import {
   assertRoleAtLeast,
@@ -1662,6 +1663,8 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
     [targetUserId, normalizedEmail],
   );
 
+  await revokeAllUserSessions(targetUserId);
+
   const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
   return bootstrap.staff.find((user) => user.dbId === targetUserId) ?? null;
 }
@@ -1771,6 +1774,8 @@ export async function inviteUserLoginAccess(targetUserId, currentUser, auditCont
     );
   }
 
+  await revokeAllUserSessions(targetUserId, auditContext);
+
   const passwordSetup = await issuePasswordSetupToken({
     userId: targetUserId,
     purpose: "invite",
@@ -1853,6 +1858,8 @@ export async function resetUserPassword(targetUserId, currentUser, auditContext 
     [targetUserId, loginUsername],
   );
 
+  await revokeAllUserSessions(targetUserId, auditContext);
+
   const passwordSetup = await issuePasswordSetupToken({
     userId: targetUserId,
     purpose: "reset",
@@ -1931,6 +1938,8 @@ export async function setUserLoginAccess(targetUserId, isActive, currentUser, au
     `,
     [targetUserId, Boolean(isActive)],
   );
+
+  await revokeAllUserSessions(targetUserId, auditContext);
 
   await recordAuthEvent({
     eventType: Boolean(isActive) ? "login_access_enabled" : "login_access_disabled",

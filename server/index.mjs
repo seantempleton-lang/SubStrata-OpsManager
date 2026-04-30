@@ -72,7 +72,7 @@ app.get("/api/session", requireAuth, async (req, res) => {
 app.post("/api/session/login", async (req, res) => {
   try {
     const session = await loginWithPassword(
-      req.body.email,
+      req.body.username ?? req.body.email,
       req.body.password,
       getAuditContext(req),
     );
