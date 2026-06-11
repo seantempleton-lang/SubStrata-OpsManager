@@ -35,9 +35,34 @@ function roleTone(appRole) {
   }
 }
 
+function getLoginState(person) {
+  if (person.lockedUntil) return "locked";
+  if (person.pendingPasswordPurpose === "invite") return "pending";
+  if (person.pendingPasswordPurpose === "reset") return "pending";
+  if (person.hasAuthAccount) return person.loginAccountActive ? "enabled" : "disabled";
+  return "none";
+}
+
+function getLoginLabel(person) {
+  switch (getLoginState(person)) {
+    case "locked":
+      return "Locked";
+    case "pending":
+      return person.pendingPasswordPurpose === "reset" ? "Reset Pending" : "Invite Pending";
+    case "enabled":
+      return "Enabled";
+    case "disabled":
+      return "Disabled";
+    default:
+      return "No Login";
+  }
+}
+
 export default function AdminScreen({
   currentUser = null,
   staff = [],
+  regionFilter = "all",
+  divisionFilter = {},
   onCreateUser,
   onDeleteUser,
   onUpdateUserRole,
@@ -47,6 +72,9 @@ export default function AdminScreen({
   onResetUserPassword,
 }) {
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [loginFilter, setLoginFilter] = useState("all");
+  const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
   const [savingUserId, setSavingUserId] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [userDrafts, setUserDrafts] = useState({});
@@ -89,31 +117,79 @@ export default function AdminScreen({
     const term = search.trim().toLowerCase();
     return [...staff]
       .filter((person) => {
-        if (!term) return true;
-        return [
-          person.name,
-          person.id,
-          person.username,
-          person.roleTitle ?? person.role,
-          person.appRole,
-          person.region,
-          person.division,
-          person.email,
-          person.loginEmail,
-        ]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(term));
+        const draft = userDrafts[person.dbId] ?? {};
+        const divisionVisible = person.division ? divisionFilter[person.division] !== false : true;
+        const regionVisible = regionFilter === "all" || person.region === regionFilter || !person.region;
+        const roleVisible = roleFilter === "all" || person.appRole === roleFilter;
+        const loginVisible = loginFilter === "all" || getLoginState(person) === loginFilter;
+        const searchVisible =
+          !term ||
+          [
+            draft.fullName ?? person.name,
+            draft.employeeCode ?? person.id,
+            draft.username ?? person.username,
+            draft.roleTitle ?? person.roleTitle ?? person.role,
+            person.appRole,
+            draft.region ?? person.region,
+            draft.division ?? person.division,
+            draft.email ?? person.email,
+            person.loginEmail,
+            draft.phone ?? person.phone,
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(term));
+
+        return divisionVisible && regionVisible && roleVisible && loginVisible && searchVisible;
       })
-      .sort((left, right) => left.name.localeCompare(right.name));
-  }, [search, staff]);
+      .sort((left, right) => {
+        const getValue = (person) => {
+          const draft = userDrafts[person.dbId] ?? {};
+          switch (sortConfig.key) {
+            case "employeeCode":
+              return draft.employeeCode ?? person.id ?? "";
+            case "name":
+              return draft.fullName ?? person.name ?? "";
+            case "initials":
+              return draft.initials ?? person.initials ?? "";
+            case "roleTitle":
+              return draft.roleTitle ?? person.roleTitle ?? person.role ?? "";
+            case "username":
+              return draft.username ?? person.username ?? "";
+            case "email":
+              return draft.email ?? person.email ?? person.loginEmail ?? "";
+            case "phone":
+              return draft.phone ?? person.phone ?? "";
+            case "division":
+              return draft.division ?? person.division ?? "";
+            case "region":
+              return draft.region ?? person.region ?? "";
+            case "appRole":
+              return person.appRole ?? "";
+            case "login":
+              return getLoginLabel(person);
+            default:
+              return person.name ?? "";
+          }
+        };
+
+        const leftValue = String(getValue(left)).toLowerCase();
+        const rightValue = String(getValue(right)).toLowerCase();
+        const comparison = leftValue.localeCompare(rightValue, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+
+        return sortConfig.direction === "asc" ? comparison : -comparison;
+      });
+  }, [divisionFilter, loginFilter, regionFilter, roleFilter, search, sortConfig, staff, userDrafts]);
 
   const summary = useMemo(
     () =>
       APP_ROLES.map((appRole) => ({
         appRole,
-        count: staff.filter((person) => person.appRole === appRole).length,
+        count: visibleStaff.filter((person) => person.appRole === appRole).length,
       })),
-    [staff],
+    [visibleStaff],
   );
 
   async function handleCreateUser() {
@@ -264,6 +340,66 @@ export default function AdminScreen({
     }
   }
 
+  function handleSort(key) {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  }
+
+  function renderSortableHeader(key, label) {
+    const active = sortConfig.key === key;
+    const marker = active ? (sortConfig.direction === "asc" ? " ▲" : " ▼") : "";
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(key)}
+        style={{
+          border: "none",
+          background: "transparent",
+          padding: 0,
+          color: active ? COLORS.amber : COLORS.textSecondary,
+          font: "inherit",
+          fontWeight: 800,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          cursor: "pointer",
+          textAlign: "left",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}{marker}
+      </button>
+    );
+  }
+
+  const userTableColumns = "90px 170px 70px 150px 150px 220px 125px 120px 95px 145px 120px 300px";
+  const compactInputStyle = {
+    width: "100%",
+    padding: "7px 8px",
+    borderRadius: 7,
+    border: `1px solid ${COLORS.border}`,
+    fontSize: 12,
+    boxSizing: "border-box",
+    background: COLORS.white,
+  };
+  const compactSelectStyle = {
+    ...compactInputStyle,
+    padding: "7px 8px",
+  };
+  const compactButtonStyle = {
+    padding: "7px 9px",
+    borderRadius: 7,
+    border: `1px solid ${COLORS.border}`,
+    background: COLORS.white,
+    color: COLORS.textPrimary,
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
@@ -325,20 +461,82 @@ export default function AdminScreen({
           </div>
         </div>
 
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search users, emails, titles, divisions, roles..."
-          style={{
-            width: 360,
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: `1px solid ${COLORS.border}`,
-            fontSize: 13,
-            outline: "none",
-            boxSizing: "border-box",
-          }}
-        />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end", maxWidth: 820 }}>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search users, emails, titles..."
+            style={{
+              width: 280,
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: `1px solid ${COLORS.border}`,
+              fontSize: 13,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: `1px solid ${COLORS.border}`,
+              fontSize: 13,
+              background: COLORS.white,
+            }}
+          >
+            <option value="all">All roles</option>
+            {APP_ROLES.map((appRole) => (
+              <option key={appRole} value={appRole}>
+                {appRole}
+              </option>
+            ))}
+          </select>
+          <select
+            value={loginFilter}
+            onChange={(event) => setLoginFilter(event.target.value)}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: `1px solid ${COLORS.border}`,
+              fontSize: 13,
+              background: COLORS.white,
+            }}
+          >
+            <option value="all">All logins</option>
+            <option value="enabled">Enabled</option>
+            <option value="pending">Pending</option>
+            <option value="disabled">Disabled</option>
+            <option value="locked">Locked</option>
+            <option value="none">No login</option>
+          </select>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: COLORS.textMuted, textTransform: "uppercase" }}>
+              Global:
+            </span>
+            <span style={{ fontSize: 11, padding: "4px 8px", borderRadius: 999, background: COLORS.bg, border: `1px solid ${COLORS.border}`, color: COLORS.textSecondary, fontWeight: 700 }}>
+              {regionFilter === "all" ? "All regions" : regionFilter}
+            </span>
+            {Object.entries(divisionFilter).map(([division, visible]) => (
+              <span
+                key={division}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 8px",
+                  borderRadius: 999,
+                  background: visible ? COLORS.bg : "#FEF2F2",
+                  border: `1px solid ${visible ? COLORS.border : COLORS.red}`,
+                  color: visible ? COLORS.textSecondary : COLORS.red,
+                  fontWeight: 700,
+                }}
+              >
+                {visible ? division : `${division} hidden`}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div
@@ -564,14 +762,15 @@ export default function AdminScreen({
           borderRadius: 12,
           border: `1px solid ${COLORS.border}`,
           boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-          overflow: "hidden",
+          overflow: "auto",
         }}
       >
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2.1fr 2fr 2.1fr 1.35fr",
-            gap: 0,
+            gridTemplateColumns: userTableColumns,
+            gap: 10,
+            minWidth: 1880,
             padding: "12px 16px",
             background: COLORS.bg,
             borderBottom: `1px solid ${COLORS.border}`,
@@ -582,10 +781,18 @@ export default function AdminScreen({
             letterSpacing: "0.05em",
           }}
         >
-          <div>Profile</div>
-          <div>Contact & Login</div>
-          <div>Access</div>
-          <div>Authority</div>
+          <div>{renderSortableHeader("employeeCode", "Code")}</div>
+          <div>{renderSortableHeader("name", "Name")}</div>
+          <div>{renderSortableHeader("initials", "Init")}</div>
+          <div>{renderSortableHeader("roleTitle", "Title")}</div>
+          <div>{renderSortableHeader("username", "Username")}</div>
+          <div>{renderSortableHeader("email", "Email")}</div>
+          <div>{renderSortableHeader("phone", "Phone")}</div>
+          <div>{renderSortableHeader("division", "Division")}</div>
+          <div>{renderSortableHeader("region", "Region")}</div>
+          <div>{renderSortableHeader("appRole", "Authority")}</div>
+          <div>{renderSortableHeader("login", "Login")}</div>
+          <div>Actions</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -639,188 +846,181 @@ export default function AdminScreen({
                 key={person.dbId}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "2.1fr 2fr 2.1fr 1.35fr",
-                  gap: 14,
-                  padding: "14px 16px",
+                  gridTemplateColumns: userTableColumns,
+                  gap: 10,
+                  minWidth: 1880,
+                  padding: "10px 16px",
                   borderBottom: `1px solid ${COLORS.border}`,
-                  alignItems: "start",
+                  alignItems: "center",
                 }}
               >
-                <div style={{ display: "grid", gridTemplateColumns: "0.85fr 1.4fr", gap: 8 }}>
+                <div>
                   <input
                     value={draft.employeeCode ?? ""}
                     disabled={isSaving}
                     onChange={(event) => updateUserDraft(person.dbId, "employeeCode", event.target.value)}
                     placeholder="Employee code"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      boxSizing: "border-box",
-                    }}
+                    style={compactInputStyle}
                   />
+                </div>
+                <div>
                   <input
                     value={draft.fullName ?? ""}
                     disabled={isSaving}
                     onChange={(event) => updateUserDraft(person.dbId, "fullName", event.target.value)}
                     placeholder="Full name"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      boxSizing: "border-box",
-                    }}
+                    style={compactInputStyle}
                   />
+                </div>
+                <div>
                   <input
                     value={draft.initials ?? ""}
                     disabled={isSaving}
                     onChange={(event) => updateUserDraft(person.dbId, "initials", event.target.value)}
                     placeholder="Initials"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      boxSizing: "border-box",
-                    }}
+                    style={compactInputStyle}
                   />
+                </div>
+                <div>
                   <input
                     value={draft.roleTitle ?? ""}
                     disabled={isSaving}
                     onChange={(event) => updateUserDraft(person.dbId, "roleTitle", event.target.value)}
                     placeholder="Role title"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      boxSizing: "border-box",
-                    }}
+                    style={compactInputStyle}
                   />
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
                   <input
                     value={draftUsername}
                     disabled={isSaving}
                     onChange={(event) => updateUserDraft(person.dbId, "username", event.target.value)}
                     placeholder="FirstnameLastname"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      boxSizing: "border-box",
-                    }}
+                    style={compactInputStyle}
                   />
+                </div>
+                <div>
                   <input
                     value={draftEmail}
                     disabled={isSaving}
                     onChange={(event) => updateUserDraft(person.dbId, "email", event.target.value)}
                     placeholder="user@company.com"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      boxSizing: "border-box",
-                    }}
+                    style={compactInputStyle}
                   />
+                </div>
+                <div>
                   <input
                     value={draft.phone ?? ""}
                     disabled={isSaving}
                     onChange={(event) => updateUserDraft(person.dbId, "phone", event.target.value)}
                     placeholder="Phone"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      boxSizing: "border-box",
-                    }}
+                    style={compactInputStyle}
                   />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <select
-                      value={draft.division ?? ""}
-                      disabled={isSaving}
-                      onChange={(event) => updateUserDraft(person.dbId, "division", event.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: `1px solid ${COLORS.border}`,
-                        fontSize: 12,
-                        background: COLORS.white,
-                      }}
-                    >
-                      <option value="">Division</option>
-                      {DIVISIONS.map((division) => (
-                        <option key={division} value={division}>
-                          {division}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={draft.region ?? ""}
-                      disabled={isSaving}
-                      onChange={(event) => updateUserDraft(person.dbId, "region", event.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: `1px solid ${COLORS.border}`,
-                        fontSize: 12,
-                        background: COLORS.white,
-                      }}
-                    >
-                      <option value="">Region</option>
-                      {REGIONS.map((region) => (
-                        <option key={region} value={region}>
-                          {region}
-                        </option>
-                      ))}
-                    </select>
+                </div>
+                <div>
+                  <select
+                    value={draft.division ?? ""}
+                    disabled={isSaving}
+                    onChange={(event) => updateUserDraft(person.dbId, "division", event.target.value)}
+                    style={compactSelectStyle}
+                  >
+                    <option value="">Division</option>
+                    {DIVISIONS.map((division) => (
+                      <option key={division} value={division}>
+                        {division}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <select
+                    value={draft.region ?? ""}
+                    disabled={isSaving}
+                    onChange={(event) => updateUserDraft(person.dbId, "region", event.target.value)}
+                    style={compactSelectStyle}
+                  >
+                    <option value="">Region</option>
+                    {REGIONS.map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      padding: "4px 7px",
+                      borderRadius: 999,
+                      background: tone.bg,
+                      color: tone.color,
+                      border: `1px solid ${tone.border}`,
+                      fontSize: 10,
+                      fontWeight: 800,
+                      minWidth: 84,
+                      textAlign: "center",
+                    }}
+                  >
+                    {person.appRole}
+                  </span>
+                  <select
+                    value={person.appRole || "FieldUser"}
+                    disabled={isSaving}
+                    onChange={(event) => handleRoleChange(person.dbId, event.target.value)}
+                    style={{ ...compactSelectStyle, minWidth: 0 }}
+                  >
+                    {APP_ROLES.map((appRole) => (
+                      <option key={appRole} value={appRole}>
+                        {appRole}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div
+                    title={loginStatusLines.join("\n")}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: 999,
+                      background:
+                        getLoginState(person) === "enabled"
+                          ? "#ECFDF5"
+                          : getLoginState(person) === "locked"
+                            ? "#FEF2F2"
+                            : COLORS.bg,
+                      color:
+                        getLoginState(person) === "enabled"
+                          ? COLORS.green
+                          : getLoginState(person) === "locked"
+                            ? COLORS.red
+                            : COLORS.textSecondary,
+                      border: `1px solid ${COLORS.border}`,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      textAlign: "center",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {getLoginLabel(person)}
                   </div>
                 </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button
                       onClick={() => handleUserDetailsSave(person.dbId)}
                       disabled={isSaving}
-                      style={{
-                        padding: "7px 10px",
-                        borderRadius: 8,
-                        border: `1px solid ${COLORS.border}`,
-                        background: COLORS.white,
-                        color: COLORS.textPrimary,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: isSaving ? "wait" : "pointer",
-                      }}
+                      style={{ ...compactButtonStyle, cursor: isSaving ? "wait" : "pointer" }}
                     >
-                      Save Details
+                      Save
                     </button>
                     <button
                       onClick={() => handleInviteUser(person.dbId)}
                       disabled={isSaving || !draftEmail.trim() || !draftUsername.trim() || person.hasAuthAccount}
                       style={{
-                        padding: "7px 10px",
-                        borderRadius: 8,
+                        ...compactButtonStyle,
                         border: "none",
                         background: "#0F766E",
                         color: COLORS.white,
-                        fontSize: 12,
-                        fontWeight: 800,
                         cursor: isSaving ? "wait" : "pointer",
                         opacity:
                           isSaving || !draftEmail.trim() || !draftUsername.trim() || person.hasAuthAccount
@@ -839,25 +1039,22 @@ export default function AdminScreen({
                         border: "none",
                         background: COLORS.amber,
                         color: COLORS.navy,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 800,
                         cursor: isSaving ? "wait" : "pointer",
                         opacity: isSaving || !draftEmail.trim() || !person.hasAuthAccount ? 0.6 : 1,
                       }}
                     >
-                      Reset Link
+                      Reset
                     </button>
                     <button
                       onClick={() => handleLoginAccessToggle(person.dbId, !person.loginAccountActive)}
                       disabled={isSaving || !person.hasAuthAccount}
                       style={{
-                        padding: "7px 10px",
-                        borderRadius: 8,
+                        ...compactButtonStyle,
                         border: `1px solid ${COLORS.border}`,
                         background: person.loginAccountActive ? "#FEF2F2" : "#ECFDF5",
                         color: person.loginAccountActive ? COLORS.red : COLORS.green,
-                        fontSize: 12,
-                        fontWeight: 800,
                         cursor: isSaving ? "wait" : "pointer",
                         opacity: isSaving || !person.hasAuthAccount ? 0.6 : 1,
                       }}
@@ -868,65 +1065,16 @@ export default function AdminScreen({
                       onClick={() => handleDeleteUser(person)}
                       disabled={isSaving || currentUser?.dbId === person.dbId}
                       style={{
-                        padding: "7px 10px",
-                        borderRadius: 8,
+                        ...compactButtonStyle,
                         border: "none",
                         background: COLORS.red,
                         color: COLORS.white,
-                        fontSize: 12,
-                        fontWeight: 800,
                         cursor: isSaving ? "wait" : "pointer",
                         opacity: isSaving || currentUser?.dbId === person.dbId ? 0.55 : 1,
                       }}
                     >
-                      Delete User
+                      Delete
                     </button>
-                  </div>
-                  <div style={{ display: "grid", gap: 3 }}>
-                    {loginStatusLines.map((line) => (
-                      <div key={line} style={{ fontSize: 11, color: COLORS.textMuted }}>
-                        {line}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: 999,
-                      background: tone.bg,
-                      color: tone.color,
-                      border: `1px solid ${tone.border}`,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      minWidth: 94,
-                      textAlign: "center",
-                    }}
-                  >
-                    {person.appRole}
-                  </span>
-                  <select
-                    value={person.appRole || "FieldUser"}
-                    disabled={isSaving}
-                    onChange={(event) => handleRoleChange(person.dbId, event.target.value)}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.border}`,
-                      fontSize: 12,
-                      background: COLORS.white,
-                    }}
-                  >
-                    {APP_ROLES.map((appRole) => (
-                      <option key={appRole} value={appRole}>
-                        {appRole}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
             );

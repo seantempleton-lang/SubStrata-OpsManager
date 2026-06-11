@@ -386,6 +386,8 @@ export default function App() {
             <AdminScreen
               currentUser={currentUser}
               staff={staff}
+              regionFilter={regionFilter}
+              divisionFilter={divisionFilter}
               onCreateUser={createUser}
               onDeleteUser={deleteUser}
               onUpdateUserRole={updateUserRole}
