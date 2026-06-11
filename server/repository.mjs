@@ -177,6 +177,7 @@ async function fetchRows() {
           u.initials,
           u.role_title,
           u.app_role,
+          u.login_username,
           u.division,
           u.region,
           u.email,

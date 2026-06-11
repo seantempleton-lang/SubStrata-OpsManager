@@ -37,7 +37,7 @@ export default function LoginScreen({
   const isPasswordSetupMode = Boolean(activePasswordToken);
 
   const [username, setUsername] = useState("SeanTempleton");
-  const [password, setPassword] = useState("SubStrata!2026");
+  const [password, setPassword] = useState("");
   const [tokenPreview, setTokenPreview] = useState(null);
   const [tokenError, setTokenError] = useState(null);
   const [validatingToken, setValidatingToken] = useState(isPasswordSetupMode);
@@ -414,12 +414,12 @@ export default function LoginScreen({
                 lineHeight: 1.6,
               }}
             >
-              Demo accounts:
+              Usernames:
               <div><strong>Sean:</strong> `SeanTempleton`</div>
               <div><strong>Tracey:</strong> `TraceyFlatman`</div>
               <div><strong>Tom:</strong> `TomLubbe`</div>
               <div><strong>Greg:</strong> `GregCossar`</div>
-              <div><strong>Password:</strong> `SubStrata!2026`</div>
+              <div>Use the current generated or reset password for that user.</div>
             </div>
           </>
         )}

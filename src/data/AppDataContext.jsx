@@ -106,16 +106,22 @@ export function AppDataProvider({ children }) {
   const login = useCallback(
     async (email, password) => {
       setAuthError(null);
+      let loginAccepted = false;
 
       try {
         await apiRequest("/api/session/login", {
           method: "POST",
           body: JSON.stringify({ username: email, email, password }),
         });
+        loginAccepted = true;
         await loadBootstrapData();
       } catch (loginFailure) {
         setIsAuthenticated(false);
-        setAuthError(loginFailure.message);
+        setAuthError(
+          loginAccepted
+            ? `Sign-in succeeded, but workspace data failed to load: ${loginFailure.message}`
+            : loginFailure.message,
+        );
         throw loginFailure;
       }
     },

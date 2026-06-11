@@ -35,6 +35,7 @@ const distDir = path.join(repoRoot, "dist");
 
 const app = express();
 
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "2mb" }));
 
 function getAuditContext(req) {
@@ -76,7 +77,7 @@ app.post("/api/session/login", async (req, res) => {
       req.body.password,
       getAuditContext(req),
     );
-    setSessionCookie(res, session.sessionToken, session.expiresAt);
+    setSessionCookie(res, session.sessionToken, session.expiresAt, req);
     res.status(201).json({
       authenticated: true,
       user: session.user,
@@ -111,7 +112,7 @@ app.post("/api/password-links/complete", async (req, res) => {
 
 app.delete("/api/session/logout", requireAuth, async (req, res) => {
   await revokeSession(req.auth.sessionId, getAuditContext(req));
-  clearSessionCookie(res);
+  clearSessionCookie(res, req);
   res.status(204).end();
 });
 

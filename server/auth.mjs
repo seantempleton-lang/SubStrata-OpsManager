@@ -70,6 +70,40 @@ function serializeCookie(name, value, options = {}) {
   return parts.join("; ");
 }
 
+function normalizeBooleanEnv(value) {
+  if (value == null || value === "") return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return null;
+}
+
+function requestUsesHttps(req) {
+  const forwardedProtoHeader = req?.headers?.["x-forwarded-proto"];
+  const forwardedProto = Array.isArray(forwardedProtoHeader)
+    ? forwardedProtoHeader[0]
+    : forwardedProtoHeader;
+
+  return (
+    req?.secure === true ||
+    String(forwardedProto || "").split(",")[0].trim().toLowerCase() === "https"
+  );
+}
+
+function shouldUseSecureCookies(req = null) {
+  const explicitSetting = normalizeBooleanEnv(process.env.COOKIE_SECURE);
+  if (explicitSetting != null) return explicitSetting;
+
+  if (requestUsesHttps(req)) return true;
+
+  const configuredBaseUrl = process.env.APP_BASE_URL || process.env.COOLIFY_URL || "";
+  if (configuredBaseUrl) {
+    return /^https:\/\//i.test(configuredBaseUrl);
+  }
+
+  return false;
+}
+
 function verifyPassword(password, storedHash) {
   if (!storedHash) return false;
 
@@ -158,7 +192,7 @@ function normalizeUser(row) {
   };
 }
 
-export function clearSessionCookie(res) {
+export function clearSessionCookie(res, req = null) {
   res.setHeader(
     "Set-Cookie",
     serializeCookie(SESSION_COOKIE_NAME, "", {
@@ -167,7 +201,7 @@ export function clearSessionCookie(res) {
       httpOnly: true,
       maxAge: 0,
       expires: new Date(0),
-      secure: process.env.NODE_ENV === "production",
+      secure: shouldUseSecureCookies(req),
     }),
   );
 }
@@ -236,7 +270,7 @@ export async function requireAuth(req, res, next) {
   try {
     const session = await getSessionFromRequest(req);
     if (!session) {
-      clearSessionCookie(res);
+      clearSessionCookie(res, req);
       res.status(401).json({ error: "Authentication required." });
       return;
     }
@@ -447,7 +481,7 @@ export async function loginWithPassword(email, password, auditContext = {}) {
   }
 }
 
-export function setSessionCookie(res, sessionToken, expiresAt) {
+export function setSessionCookie(res, sessionToken, expiresAt, req = null) {
   res.setHeader(
     "Set-Cookie",
     serializeCookie(SESSION_COOKIE_NAME, sessionToken, {
@@ -456,7 +490,7 @@ export function setSessionCookie(res, sessionToken, expiresAt) {
       httpOnly: true,
       maxAge: Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000),
       expires: new Date(expiresAt),
-      secure: process.env.NODE_ENV === "production",
+      secure: shouldUseSecureCookies(req),
     }),
   );
 }
