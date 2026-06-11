@@ -10,6 +10,9 @@ const APP_ROLES = [
   "FieldUser",
 ];
 
+const DIVISIONS = ["Water", "Geotech", "Operations", "Finance", "HSE"];
+const REGIONS = ["North", "South"];
+
 function formatDateTime(value) {
   if (!value) return null;
   const parsed = new Date(value);
@@ -36,6 +39,7 @@ export default function AdminScreen({
   currentUser = null,
   staff = [],
   onCreateUser,
+  onDeleteUser,
   onUpdateUserRole,
   onUpdateUserIdentity,
   onSetUserLoginAccess,
@@ -45,8 +49,7 @@ export default function AdminScreen({
   const [search, setSearch] = useState("");
   const [savingUserId, setSavingUserId] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  const [emailDrafts, setEmailDrafts] = useState({});
-  const [usernameDrafts, setUsernameDrafts] = useState({});
+  const [userDrafts, setUserDrafts] = useState({});
   const [newUser, setNewUser] = useState({
     employeeCode: "",
     fullName: "",
@@ -62,19 +65,21 @@ export default function AdminScreen({
   });
 
   useEffect(() => {
-    setEmailDrafts(
+    setUserDrafts(
       Object.fromEntries(
         staff.map((person) => [
           person.dbId,
-          person.loginEmail ?? person.email ?? "",
-        ]),
-      ),
-    );
-    setUsernameDrafts(
-      Object.fromEntries(
-        staff.map((person) => [
-          person.dbId,
-          person.username ?? "",
+          {
+            employeeCode: person.id ?? "",
+            fullName: person.name ?? "",
+            initials: person.initials ?? "",
+            roleTitle: person.roleTitle ?? person.role ?? "",
+            division: person.division ?? "",
+            region: person.region ?? "",
+            email: person.loginEmail ?? person.email ?? "",
+            phone: person.phone ?? "",
+            username: person.username ?? "",
+          },
         ]),
       ),
     );
@@ -159,16 +164,43 @@ export default function AdminScreen({
     }
   }
 
-  async function handleEmailSave(userId) {
+  function updateUserDraft(userId, field, value) {
+    setUserDrafts((current) => ({
+      ...current,
+      [userId]: {
+        ...(current[userId] ?? {}),
+        [field]: value,
+      },
+    }));
+  }
+
+  async function handleUserDetailsSave(userId) {
     setSavingUserId(userId);
     setFeedback(null);
 
     try {
-      await onUpdateUserIdentity(userId, {
-        email: emailDrafts[userId] ?? "",
-        username: usernameDrafts[userId] ?? "",
-      });
-      setFeedback({ type: "success", message: "User login details updated." });
+      await onUpdateUserIdentity(userId, userDrafts[userId] ?? {});
+      setFeedback({ type: "success", message: "User details updated." });
+    } catch (error) {
+      setFeedback({ type: "error", message: error.message });
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function handleDeleteUser(person) {
+    const confirmed = window.confirm(
+      `Delete ${person.name}? This will deactivate the user and revoke login access, but historical jobs and timesheets will remain linked.`,
+    );
+
+    if (!confirmed) return;
+
+    setSavingUserId(person.dbId);
+    setFeedback(null);
+
+    try {
+      const result = await onDeleteUser(person.dbId);
+      setFeedback({ type: "success", message: result.message });
     } catch (error) {
       setFeedback({ type: "error", message: error.message });
     } finally {
@@ -538,7 +570,7 @@ export default function AdminScreen({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1.6fr 1fr 0.85fr 0.8fr 2.2fr 1.2fr",
+            gridTemplateColumns: "2.1fr 2fr 2.1fr 1.35fr",
             gap: 0,
             padding: "12px 16px",
             background: COLORS.bg,
@@ -550,11 +582,9 @@ export default function AdminScreen({
             letterSpacing: "0.05em",
           }}
         >
-          <div>User</div>
-          <div>Title</div>
-          <div>Division</div>
-          <div>Region</div>
-          <div>Login Access</div>
+          <div>Profile</div>
+          <div>Contact & Login</div>
+          <div>Access</div>
           <div>Authority</div>
         </div>
 
@@ -562,8 +592,9 @@ export default function AdminScreen({
           {visibleStaff.map((person) => {
             const tone = roleTone(person.appRole);
             const isSaving = savingUserId === person.dbId;
-            const draftEmail = emailDrafts[person.dbId] ?? "";
-            const draftUsername = usernameDrafts[person.dbId] ?? "";
+            const draft = userDrafts[person.dbId] ?? {};
+            const draftEmail = draft.email ?? "";
+            const draftUsername = draft.username ?? "";
             const hasPendingInvite = person.pendingPasswordPurpose === "invite";
             const hasPendingReset = person.pendingPasswordPurpose === "reset";
             const pendingPasswordExpiry = formatDateTime(person.pendingPasswordExpiresAt);
@@ -608,44 +639,77 @@ export default function AdminScreen({
                 key={person.dbId}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1.6fr 1fr 0.85fr 0.8fr 2.2fr 1.2fr",
-                  gap: 0,
+                  gridTemplateColumns: "2.1fr 2fr 2.1fr 1.35fr",
+                  gap: 14,
                   padding: "14px 16px",
                   borderBottom: `1px solid ${COLORS.border}`,
-                  alignItems: "center",
+                  alignItems: "start",
                 }}
               >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>
-                    {person.name}
-                  </div>
-                  <div style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
-                    {person.id}
-                  </div>
-                </div>
-
-                <div style={{ fontSize: 13, color: COLORS.textPrimary }}>
-                  {person.roleTitle || person.role || "Unassigned"}
-                </div>
-
-                <div style={{ fontSize: 13, color: person.division ? COLORS.textPrimary : COLORS.textMuted }}>
-                  {person.division || "-"}
-                </div>
-
-                <div style={{ fontSize: 13, color: person.region ? COLORS.textPrimary : COLORS.textMuted }}>
-                  {person.region || "-"}
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingRight: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "0.85fr 1.4fr", gap: 8 }}>
                   <input
-                    value={usernameDrafts[person.dbId] ?? ""}
+                    value={draft.employeeCode ?? ""}
                     disabled={isSaving}
-                    onChange={(event) =>
-                      setUsernameDrafts((current) => ({
-                        ...current,
-                        [person.dbId]: event.target.value,
-                      }))
-                    }
+                    onChange={(event) => updateUserDraft(person.dbId, "employeeCode", event.target.value)}
+                    placeholder="Employee code"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${COLORS.border}`,
+                      fontSize: 12,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <input
+                    value={draft.fullName ?? ""}
+                    disabled={isSaving}
+                    onChange={(event) => updateUserDraft(person.dbId, "fullName", event.target.value)}
+                    placeholder="Full name"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${COLORS.border}`,
+                      fontSize: 12,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <input
+                    value={draft.initials ?? ""}
+                    disabled={isSaving}
+                    onChange={(event) => updateUserDraft(person.dbId, "initials", event.target.value)}
+                    placeholder="Initials"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${COLORS.border}`,
+                      fontSize: 12,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <input
+                    value={draft.roleTitle ?? ""}
+                    disabled={isSaving}
+                    onChange={(event) => updateUserDraft(person.dbId, "roleTitle", event.target.value)}
+                    placeholder="Role title"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${COLORS.border}`,
+                      fontSize: 12,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <input
+                    value={draftUsername}
+                    disabled={isSaving}
+                    onChange={(event) => updateUserDraft(person.dbId, "username", event.target.value)}
                     placeholder="FirstnameLastname"
                     style={{
                       width: "100%",
@@ -659,12 +723,7 @@ export default function AdminScreen({
                   <input
                     value={draftEmail}
                     disabled={isSaving}
-                    onChange={(event) =>
-                      setEmailDrafts((current) => ({
-                        ...current,
-                        [person.dbId]: event.target.value,
-                      }))
-                    }
+                    onChange={(event) => updateUserDraft(person.dbId, "email", event.target.value)}
                     placeholder="user@company.com"
                     style={{
                       width: "100%",
@@ -675,9 +734,68 @@ export default function AdminScreen({
                       boxSizing: "border-box",
                     }}
                   />
+                  <input
+                    value={draft.phone ?? ""}
+                    disabled={isSaving}
+                    onChange={(event) => updateUserDraft(person.dbId, "phone", event.target.value)}
+                    placeholder="Phone"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${COLORS.border}`,
+                      fontSize: 12,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <select
+                      value={draft.division ?? ""}
+                      disabled={isSaving}
+                      onChange={(event) => updateUserDraft(person.dbId, "division", event.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${COLORS.border}`,
+                        fontSize: 12,
+                        background: COLORS.white,
+                      }}
+                    >
+                      <option value="">Division</option>
+                      {DIVISIONS.map((division) => (
+                        <option key={division} value={division}>
+                          {division}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={draft.region ?? ""}
+                      disabled={isSaving}
+                      onChange={(event) => updateUserDraft(person.dbId, "region", event.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${COLORS.border}`,
+                        fontSize: 12,
+                        background: COLORS.white,
+                      }}
+                    >
+                      <option value="">Region</option>
+                      {REGIONS.map((region) => (
+                        <option key={region} value={region}>
+                          {region}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
-                      onClick={() => handleEmailSave(person.dbId)}
+                      onClick={() => handleUserDetailsSave(person.dbId)}
                       disabled={isSaving}
                       style={{
                         padding: "7px 10px",
@@ -727,8 +845,8 @@ export default function AdminScreen({
                         opacity: isSaving || !draftEmail.trim() || !person.hasAuthAccount ? 0.6 : 1,
                       }}
                     >
-                        Reset Link
-                      </button>
+                      Reset Link
+                    </button>
                     <button
                       onClick={() => handleLoginAccessToggle(person.dbId, !person.loginAccountActive)}
                       disabled={isSaving || !person.hasAuthAccount}
@@ -745,6 +863,23 @@ export default function AdminScreen({
                       }}
                     >
                       {person.loginAccountActive ? "Disable Login" : "Enable Login"}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(person)}
+                      disabled={isSaving || currentUser?.dbId === person.dbId}
+                      style={{
+                        padding: "7px 10px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: COLORS.red,
+                        color: COLORS.white,
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: isSaving ? "wait" : "pointer",
+                        opacity: isSaving || currentUser?.dbId === person.dbId ? 0.55 : 1,
+                      }}
+                    >
+                      Delete User
                     </button>
                   </div>
                   <div style={{ display: "grid", gap: 3 }}>

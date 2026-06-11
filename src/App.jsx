@@ -43,6 +43,7 @@ export default function App() {
     createEstimate,
     updateTimesheetStatus,
     createUser,
+    deleteUser,
     updateUserRole,
     updateUserIdentity,
     setUserLoginAccess,
@@ -386,6 +387,7 @@ export default function App() {
               currentUser={currentUser}
               staff={staff}
               onCreateUser={createUser}
+              onDeleteUser={deleteUser}
               onUpdateUserRole={updateUserRole}
               onUpdateUserIdentity={updateUserIdentity}
               onSetUserLoginAccess={setUserLoginAccess}

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   createUserAccount,
+  deleteUserAccount,
   createEstimate,
   createJob,
   getBootstrapData,
@@ -199,6 +200,19 @@ app.patch("/api/users/:id", requireAuth, async (req, res) => {
       req.auth.user,
     );
     res.json(user);
+  } catch (error) {
+    res.status(error.statusCode ?? 400).json({ error: error.message });
+  }
+});
+
+app.delete("/api/users/:id", requireAuth, async (req, res) => {
+  try {
+    const result = await deleteUserAccount(
+      req.params.id,
+      req.auth.user,
+      getAuditContext(req),
+    );
+    res.json(result);
   } catch (error) {
     res.status(error.statusCode ?? 400).json({ error: error.message });
   }

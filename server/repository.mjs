@@ -1567,9 +1567,40 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
     "Administrator access is required to update user details.",
   );
 
+  const employeeCode = String(input?.employeeCode ?? "").trim();
+  const fullName = String(input?.fullName ?? "").trim();
+  const roleTitle = String(input?.roleTitle ?? "").trim();
+  const initials = String(input?.initials ?? "").trim().toUpperCase() || deriveInitials(fullName);
   const normalizedEmail = normalizeLoginEmail(input?.email);
   const normalizedUsername = normalizeLoginUsername(input?.username);
+  const phone = normalizeOptionalText(input?.phone);
+  const division = normalizeOptionalText(input?.division);
+  const region = normalizeOptionalText(input?.region);
   const actorAuthority = getUserAuthoritySummary(currentUser);
+
+  if (!employeeCode) {
+    const error = new Error("Employee code is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!fullName) {
+    const error = new Error("Full name is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!roleTitle) {
+    const error = new Error("Role title is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!initials) {
+    const error = new Error("Initials are required.");
+    error.statusCode = 400;
+    throw error;
+  }
 
   if (!normalizedEmail) {
     const error = new Error("Email is required.");
@@ -1589,6 +1620,11 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
     `
       select id
       from app_users
+      where employee_code = $4
+        and id <> $2
+      union all
+      select id
+      from app_users
       where lower(email) = $1
         and id <> $2
       union all
@@ -1603,11 +1639,11 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
         and user_id <> $2
       limit 1
     `,
-    [normalizedEmail, targetUserId, normalizedUsername],
+    [normalizedEmail, targetUserId, normalizedUsername, employeeCode],
   );
 
   if (duplicateResult.rowCount > 0) {
-    const error = new Error("Another user already has that email address or username.");
+    const error = new Error("Another user already has that employee code, email address, or username.");
     error.statusCode = 400;
     throw error;
   }
@@ -1638,13 +1674,31 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
     `
       update app_users
       set
-        email = $2,
-        login_username = $3,
+        employee_code = $2,
+        full_name = $3,
+        initials = $4,
+        role_title = $5,
+        division = $6,
+        region = $7,
+        email = $8,
+        phone = $9,
+        login_username = $10,
         updated_at = now()
       where id = $1
       returning id
     `,
-    [targetUserId, normalizedEmail, normalizedUsername],
+    [
+      targetUserId,
+      employeeCode,
+      fullName,
+      initials,
+      roleTitle,
+      division,
+      region,
+      normalizedEmail,
+      phone,
+      normalizedUsername,
+    ],
   );
 
   if (updatedUserResult.rowCount === 0) {
@@ -1668,6 +1722,135 @@ export async function updateUserIdentity(targetUserId, input, currentUser) {
 
   const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
   return bootstrap.staff.find((user) => user.dbId === targetUserId) ?? null;
+}
+
+export async function deleteUserAccount(targetUserId, currentUser, auditContext = null) {
+  assertRoleAtLeast(
+    currentUser,
+    "Administrator",
+    "Administrator access is required to delete users.",
+  );
+
+  if (currentUser?.dbId === targetUserId) {
+    const error = new Error("You cannot delete your own active user account.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const targetUserResult = await query(
+    `
+      select
+        id,
+        full_name,
+        app_role,
+        is_active
+      from app_users
+      where id = $1
+      limit 1
+    `,
+    [targetUserId],
+  );
+
+  if (targetUserResult.rowCount === 0) {
+    const error = new Error("User was not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const targetUser = targetUserResult.rows[0];
+  const actorAuthority = getUserAuthoritySummary(currentUser);
+  const targetRole = normalizeAppRole(targetUser.app_role);
+
+  if (!actorAuthority.isSuperUser && targetRole === "SuperUser") {
+    const error = new Error("Only a SuperUser can delete another SuperUser.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (targetRole === "SuperUser") {
+    const remainingSuperUsersResult = await query(
+      `
+        select count(*)::integer as count
+        from app_users
+        where is_active = true
+          and app_role = 'SuperUser'
+          and id <> $1
+      `,
+      [targetUserId],
+    );
+
+    if (Number(remainingSuperUsersResult.rows[0]?.count ?? 0) === 0) {
+      const error = new Error("At least one active SuperUser must remain.");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("begin");
+
+    await client.query(
+      `
+        update app_users
+        set
+          is_active = false,
+          updated_at = now()
+        where id = $1
+      `,
+      [targetUserId],
+    );
+
+    await client.query(
+      `
+        update app_auth_accounts
+        set
+          is_active = false,
+          updated_at = now()
+        where user_id = $1
+      `,
+      [targetUserId],
+    );
+
+    await client.query(
+      `
+        update app_password_tokens
+        set revoked_at = now()
+        where user_id = $1
+          and consumed_at is null
+          and revoked_at is null
+      `,
+      [targetUserId],
+    );
+
+    await revokeAllUserSessions(targetUserId, auditContext, client);
+
+    await recordAuthEvent({
+      eventType: "user_deleted",
+      userId: targetUserId,
+      ipAddress: auditContext?.ipAddress,
+      userAgent: auditContext?.userAgent,
+      metadata: {
+        changedByUserId: currentUser?.dbId ?? null,
+        deletedUserName: targetUser.full_name,
+      },
+      client,
+    });
+
+    await client.query("commit");
+
+    const bootstrap = await getBootstrapData(currentUser?.dbId ?? null);
+    return {
+      staff: bootstrap.staff,
+      message: `${targetUser.full_name} has been deactivated and login access revoked.`,
+    };
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function inviteUserLoginAccess(targetUserId, currentUser, auditContext = null) {

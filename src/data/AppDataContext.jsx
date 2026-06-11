@@ -215,6 +215,17 @@ export function AppDataProvider({ children }) {
     [refresh],
   );
 
+  const deleteUser = useCallback(
+    async (userId) => {
+      const result = await apiRequest(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
   const resetUserPassword = useCallback(
     async (userId) => {
       const result = await apiRequest(`/api/users/${userId}/reset-password`, {
@@ -276,6 +287,7 @@ export function AppDataProvider({ children }) {
       updateTimesheetStatus,
       updateSupplierInvoiceStatus,
       createUser,
+      deleteUser,
       updateUserRole,
       updateUserIdentity,
       setUserLoginAccess,
@@ -286,6 +298,7 @@ export function AppDataProvider({ children }) {
       createEstimate,
       createJob,
       createUser,
+      deleteUser,
       data,
       error,
       authError,
