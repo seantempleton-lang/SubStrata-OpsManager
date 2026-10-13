@@ -1,18 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { COLORS, eqStatusCfg, LEAVE_TYPES, icons } from "../appData.js";
 import { DivisionBadge, Icon, StatusBadge } from "../components/ui.jsx";
+import { hasCrewMember, nzToday, calendarDate, localDateString, overlaps } from '../data/planner.js';
 
 function formatDate(value) {
   if (!value) return "-";
   return new Date(value).toLocaleDateString("en-NZ", {
+    timeZone: 'Pacific/Auckland',
     day: "numeric",
     month: "short",
     year: "numeric",
   });
-}
-
-function overlaps(aStart, aEnd, bStart, bEnd) {
-  return new Date(aStart) <= new Date(bEnd) && new Date(aEnd) >= new Date(bStart);
 }
 
 function leaveTypeConfig(type) {
@@ -643,7 +641,7 @@ function PlantView({ equipment, inspections, jobs, regionFilter, divisionFilter 
 function PersonnelView({ staff, plannerJobs, leaveApplications, regionFilter, divisionFilter }) {
   const [personnelTab, setPersonnelTab] = useState("staff");
   const [selectedStaffId, setSelectedStaffId] = useState(null);
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [calendarMonth, setCalendarMonth] = useState(() => calendarDate(nzToday()));
 
   const visibleStaff = useMemo(
     () =>
@@ -659,17 +657,17 @@ function PersonnelView({ staff, plannerJobs, leaveApplications, regionFilter, di
     () =>
       visibleStaff.map((person) => {
         const assignments = plannerJobs.filter((plannerJob) =>
-          (plannerJob.personnel ?? []).includes(person.name),
+          hasCrewMember(plannerJob, person, staff),
         );
         const activeAssignments = assignments.filter(
-          (assignment) => new Date(assignment.end) >= new Date(),
+          (assignment) => assignment.end >= nzToday(),
         );
         const nextLeave = leaveApplications
           .filter(
             (leave) =>
               leave.userId === person.id &&
               ["pending", "approved"].includes(leave.status) &&
-              new Date(leave.end) >= new Date(),
+              leave.end >= nzToday(),
           )
           .sort((left, right) => String(left.start).localeCompare(String(right.start)))[0];
 
@@ -680,7 +678,7 @@ function PersonnelView({ staff, plannerJobs, leaveApplications, regionFilter, di
           nextLeave,
         };
       }),
-    [leaveApplications, plannerJobs, visibleStaff],
+    [leaveApplications, plannerJobs, visibleStaff, staff],
   );
 
   const selectedStaff =
@@ -698,8 +696,8 @@ function PersonnelView({ staff, plannerJobs, leaveApplications, regionFilter, di
     return overlaps(
       leave.start,
       leave.end,
-      monthStart.toISOString().slice(0, 10),
-      monthEnd.toISOString().slice(0, 10),
+      localDateString(monthStart),
+      localDateString(monthEnd),
     );
   });
 
@@ -938,9 +936,9 @@ function PersonnelView({ staff, plannerJobs, leaveApplications, regionFilter, di
                         .sort((left, right) => String(right.start).localeCompare(String(left.start)))
                         .map((leave) => {
                           const type = leaveTypeConfig(leave.type);
-                          const conflictingAssignments = selectedStaff.assignments.filter((assignment) =>
+                          const conflictingAssignments = leave.status === 'approved' ? selectedStaff.assignments.filter((assignment) =>
                             overlaps(assignment.start, assignment.end, leave.start, leave.end),
-                          );
+                          ) : [];
                           return (
                             <div
                               key={leave.id}
@@ -1116,7 +1114,7 @@ function PersonnelView({ staff, plannerJobs, leaveApplications, regionFilter, di
                 }
 
                 const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNumber);
-                const dateStr = date.toISOString().slice(0, 10);
+                const dateStr = localDateString(date);
                 const dayLeave = visibleLeave.filter((leave) => overlaps(leave.start, leave.end, dateStr, dateStr));
 
                 return (

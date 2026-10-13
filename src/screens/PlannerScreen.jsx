@@ -1,28 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   COLORS,
   eqStatusCfg,
-  addDays,
-  daysBetween,
-  toDateStr,
 } from "../appData.js";
 import { Icon } from "../components/ui.jsx";
-
-function buildJobDateMap(plannerJobs) {
-  return Object.fromEntries(
-    plannerJobs.map((plannerJob, index) => [
-      index,
-      { start: plannerJob.start, end: plannerJob.end },
-    ]),
-  );
-}
+import { nzToday, calendarDate, localDateString as toDateStr, shiftDate, dateNumber, resolveCrew, plannerConflicts } from '../data/planner.js';
+import PlannerAssignmentForm, { assignmentDraft, newAssignment } from './PlannerAssignmentForm.jsx';
+const addDays = (value, days) => calendarDate(shiftDate(value, days));
 
 function getRigBars(plannerJobs, jobDates, rigId, includeDowntime = true) {
   return plannerJobs
-    .map((plannerJob, index) => ({
+    .map((plannerJob) => ({
       ...plannerJob,
-      ...jobDates[index],
-      origIdx: index,
+      ...jobDates[plannerJob.id],
     }))
     .filter((plannerJob) => plannerJob.rigId === rigId && (includeDowntime || !plannerJob.isDowntime));
 }
@@ -31,28 +21,78 @@ export default function PlannerScreen({
   jobs = [],
   equipment = [],
   plannerJobs = [],
+  staff = [],
+  leaveApplications = [],
+  currentUser,
+  onSaveAssignment,
   regionFilter = "all",
   divisionFilter = { Water: true, Geotech: true },
 }) {
-  void jobs;
-
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => calendarDate(nzToday()), []);
   const [offsetWeeks, setOffsetWeeks] = useState(-2);
   const [viewMode, setViewMode] = useState("gantt");
-  const [jobDates, setJobDates] = useState(() => buildJobDateMap(plannerJobs));
+  const [jobDates, setJobDates] = useState({});
   const [dragging, setDragging] = useState(null);
   const [tooltip, setTooltip] = useState(null);
   const [selectedBar, setSelectedBar] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const canEdit = ['Supervisor', 'Administrator', 'SuperUser'].includes(currentUser?.appRole);
+  const savedSelection = plannerJobs.find(a => a.id === selectedBar);
+  const canResize = canEdit && !saving && draft && !draft.unresolved.length && savedSelection &&
+    JSON.stringify(draft) === JSON.stringify(assignmentDraft(savedSelection, staff));
+
+  function selectAssignment(id) {
+    if (savingRef.current) return;
+    if (draft && draft.id !== id) {
+      setStatus({ message: 'Save or close the open editor before selecting another assignment.' });
+      return;
+    }
+    const assignment = plannerJobs.find(a => a.id === id);
+    setSelectedBar(id);
+    setDraft(current => current || assignmentDraft(assignment, staff));
+    setTooltip(null);
+  }
+
+  async function saveAssignment(input) {
+    if (!canEdit || savingRef.current) return;
+    if (input.unresolved.length) { setStatus({ error: true, message: 'Resolve legacy crew in the assignment editor before saving.' }); return; }
+    savingRef.current = true;
+    setSaving(true);
+    setStatus({ message: 'Saving assignment…' });
+    try {
+      const { saved, refreshWarning } = await onSaveAssignment(input.id, { ...input, jobId: input.jobId || null });
+      setDraft(assignmentDraft(saved, staff));
+      setSelectedBar(saved.id);
+      setStatus({ message: refreshWarning || 'Assignment saved.' });
+    } catch (error) {
+      setDraft(input);
+      setStatus({ error: true, stale: error.status === 409, message: `${error.message} Your edits are retained in the editor.` });
+    } finally {
+      setJobDates({});
+      setSaving(false);
+      savingRef.current = false;
+    }
+  }
+
+  async function reloadAssignment() {
+    try {
+      const response = await fetch('/api/bootstrap', { credentials: 'same-origin' });
+      if (!response.ok) throw new Error('Unable to reload saved assignment. Try again.');
+      const latest = await response.json();
+      const saved = latest.plannerJobs.find(a => a.id === draft.id);
+      if (!saved) throw new Error('Assignment no longer exists. Close the editor to continue.');
+      setDraft(assignmentDraft(saved, latest.staff));
+      setStatus({ message: 'Latest saved assignment loaded.' });
+    } catch (error) { setStatus({ error: true, stale: true, message: error.message }); }
+  }
 
   const visibleWeeks = 20;
   const dayWidth = 28;
   const rowHeight = 72;
   const labelWidth = 220;
-
-  useEffect(() => {
-    setJobDates(buildJobDateMap(plannerJobs));
-    setSelectedBar(null);
-  }, [plannerJobs]);
 
   const viewStart = addDays(toDateStr(today), offsetWeeks * 7);
   const totalDays = visibleWeeks * 7;
@@ -60,7 +100,7 @@ export default function PlannerScreen({
     addDays(toDateStr(viewStart), index * 7),
   );
   const gridWidth = totalDays * dayWidth;
-  const todayX = Math.round(((today - viewStart) / 86400000) * dayWidth);
+  const todayX = (dateNumber(toDateStr(today)) - dateNumber(toDateStr(viewStart))) * dayWidth;
 
   const filteredRigs = equipment
     .filter((rig) => rig.type === "rig")
@@ -70,27 +110,6 @@ export default function PlannerScreen({
       return true;
     });
 
-  const conflicts = [];
-  for (const rig of filteredRigs) {
-    const rigBars = getRigBars(plannerJobs, jobDates, rig.id, false);
-    for (let left = 0; left < rigBars.length; left += 1) {
-      for (let right = left + 1; right < rigBars.length; right += 1) {
-        const leftStart = new Date(rigBars[left].start);
-        const leftEnd = new Date(rigBars[left].end);
-        const rightStart = new Date(rigBars[right].start);
-        const rightEnd = new Date(rigBars[right].end);
-
-        if (leftStart < rightEnd && leftEnd > rightStart) {
-          conflicts.push({
-            rigId: rig.id,
-            jobA: rigBars[left].jobId ?? rigBars[left].label,
-            jobB: rigBars[right].jobId ?? rigBars[right].label,
-          });
-        }
-      }
-    }
-  }
-
   const monthViewStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const monthViewEnd = new Date(today.getFullYear(), today.getMonth() + 3, 0);
   const months = [];
@@ -98,8 +117,12 @@ export default function PlannerScreen({
     months.push(new Date(month.getFullYear(), month.getMonth(), 1));
   }
 
-  const dateToX = (dateStr) =>
-    Math.round(((new Date(dateStr) - viewStart) / 86400000) * dayWidth);
+  const dateToX = dateStr => (dateNumber(dateStr) - dateNumber(toDateStr(viewStart))) * dayWidth;
+  const assignments = plannerJobs.map(a => ({ ...a, ...jobDates[a.id] }));
+  const conflicts = plannerConflicts(assignments, staff, leaveApplications,
+    viewMode === 'gantt' ? toDateStr(viewStart) : toDateStr(monthViewStart),
+    viewMode === 'gantt' ? shiftDate(toDateStr(viewStart), totalDays - 1) : toDateStr(monthViewEnd))
+    .filter(w => w.ids.some(id => assignments.some(a => a.id === id && filteredRigs.some(r => r.id === a.rigId))));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -129,6 +152,7 @@ export default function PlannerScreen({
             {regionFilter !== "all" && (
               <span style={{ color: COLORS.amber, fontWeight: 700 }}> - {regionFilter}</span>
             )}
+
             {conflicts.length > 0 && (
               <span style={{ color: COLORS.red, fontWeight: 700 }}>
                 {" "}
@@ -139,6 +163,7 @@ export default function PlannerScreen({
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {canEdit && <button disabled={saving || Boolean(draft)} onClick={() => { setDraft(newAssignment(filteredRigs[0])); setStatus(null); }} style={{ padding: '7px 12px', background: COLORS.amber, border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>New assignment</button>}
           <div
             style={{
               display: "flex",
@@ -226,6 +251,10 @@ export default function PlannerScreen({
         </div>
       </div>
 
+      {draft && <PlannerAssignmentForm key={draft.id || 'new'} draft={draft} setDraft={value => { setDraft(value); setStatus(current => current?.error ? current : { message: 'Unsaved changes.' }); }} jobs={jobs} equipment={equipment} staff={staff} assignments={plannerJobs} leave={leaveApplications} canEdit={canEdit} saving={saving} status={status} onSave={saveAssignment}
+        onClose={() => { setDraft(null); setSelectedBar(null); setStatus(null); }}
+        onReload={reloadAssignment} />}
+
       {conflicts.length > 0 && (
         <div
           style={{
@@ -241,15 +270,8 @@ export default function PlannerScreen({
           <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.red, marginBottom: 2 }}>
             Resource Conflicts Detected
           </div>
-          {conflicts.map((conflict, index) => {
-            const rig = equipment.find((equipmentItem) => equipmentItem.id === conflict.rigId);
-            return (
-              <div key={index} style={{ fontSize: 12, color: COLORS.red }}>
-                {rig?.name || conflict.rigId}: jobs <strong>{conflict.jobA}</strong> and{" "}
-                <strong>{conflict.jobB}</strong> overlap - adjust dates below
-              </div>
-            );
-          })}
+          {conflicts.map((conflict, index) => <div key={index} style={{ fontSize: 12, color: COLORS.red }}>{conflict.message}</div>)}
+          <div style={{ fontSize: 11 }}>Warnings cover the displayed dates. Saving is allowed with conflicts.</div>
         </div>
       )}
 
@@ -282,7 +304,7 @@ export default function PlannerScreen({
           <span style={{ fontSize: 12, color: COLORS.textSecondary }}>Today</span>
         </div>
         <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: 8 }}>
-          Drag bar edges to adjust dates
+          {canEdit ? 'Select a bar to edit; save form edits before dragging edges' : 'Select a bar to view assignment details'}
         </span>
       </div>
 
@@ -531,20 +553,13 @@ export default function PlannerScreen({
 
                       {rigBars.map((plannerJob) => {
                         const barStart = Math.max(0, dateToX(plannerJob.start));
-                        const barEnd = Math.min(gridWidth, dateToX(plannerJob.end));
+                        const barEnd = Math.min(gridWidth, (dateToX(plannerJob.end) + dayWidth));
                         const barWidth = barEnd - barStart;
 
                         if (barWidth <= 0) return null;
 
-                        const isSelected = selectedBar === plannerJob.origIdx;
-                        const isConflicted =
-                          !plannerJob.isDowntime &&
-                          conflicts.some(
-                            (conflict) =>
-                              conflict.rigId === rig.id &&
-                              (conflict.jobA === plannerJob.jobId ||
-                                conflict.jobB === plannerJob.jobId),
-                          );
+                        const isSelected = selectedBar === plannerJob.id;
+                        const isConflicted = conflicts.some(c => c.ids.includes(plannerJob.id));
                         const barLabel =
                           plannerJob.isDowntime
                             ? plannerJob.label || "Maintenance"
@@ -552,7 +567,9 @@ export default function PlannerScreen({
 
                         return (
                           <div
-                            key={plannerJob.origIdx}
+                            key={plannerJob.id}
+                            data-assignment-id={plannerJob.id}
+                            aria-label={`Assignment ${plannerJob.jobId || plannerJob.title}`}
                             onMouseEnter={(event) =>
                               setTooltip({
                                 job: plannerJob,
@@ -562,7 +579,7 @@ export default function PlannerScreen({
                             }
                             onMouseLeave={() => setTooltip(null)}
                             onClick={() =>
-                              setSelectedBar(isSelected ? null : plannerJob.origIdx)
+                              selectAssignment(plannerJob.id)
                             }
                             style={{
                               position: "absolute",
@@ -586,13 +603,15 @@ export default function PlannerScreen({
                               padding: "0 8px",
                             }}
                           >
-                            {isSelected && (
+                            {isSelected && canResize && (
                               <>
                                 <div
+                                  role="button" aria-label="Resize start"
                                   onMouseDown={(event) => {
                                     event.stopPropagation();
                                     setDragging({
-                                      index: plannerJob.origIdx,
+                                      index: plannerJob.id,
+                                      source: plannerJob,
                                       edge: "start",
                                       startX: event.clientX,
                                       origStart: plannerJob.start,
@@ -613,10 +632,12 @@ export default function PlannerScreen({
                                   }}
                                 />
                                 <div
+                                  role="button" aria-label="Resize end"
                                   onMouseDown={(event) => {
                                     event.stopPropagation();
                                     setDragging({
-                                      index: plannerJob.origIdx,
+                                      index: plannerJob.id,
+                                      source: plannerJob,
                                       edge: "end",
                                       startX: event.clientX,
                                       origStart: plannerJob.start,
@@ -677,13 +698,13 @@ export default function PlannerScreen({
                         .map((plannerJob) => {
                           const barStart = Math.max(0, dateToX(plannerJob.start));
                           const barWidth =
-                            Math.min(gridWidth, dateToX(plannerJob.end)) - barStart;
+                            Math.min(gridWidth, (dateToX(plannerJob.end) + dayWidth)) - barStart;
 
                           if (barWidth <= 0 || !plannerJob.personnel?.length) return null;
 
                           return (
                             <div
-                              key={`personnel-${plannerJob.origIdx}`}
+                              key={`personnel-${plannerJob.id}`}
                               style={{
                                 position: "absolute",
                                 left: barStart + 4,
@@ -693,11 +714,12 @@ export default function PlannerScreen({
                                 zIndex: 4,
                               }}
                             >
-                              {plannerJob.personnel.map((name) => {
-                                const [firstName, lastName] = String(name).split(" ");
+                              {resolveCrew(plannerJob.personnel, staff).map((ref, crewIndex) => {
+                                const name = ref.label + (ref.person ? '' : ' (unresolved)');
+                                const [firstName, lastName] = name.split(' ');
                                 return (
                                   <span
-                                    key={name}
+                                    key={crewIndex} title={name}
                                     style={{
                                       fontSize: 9,
                                       fontWeight: 700,
@@ -710,7 +732,7 @@ export default function PlannerScreen({
                                       boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
                                     }}
                                   >
-                                    {firstName} {lastName?.[0] ? `${lastName[0]}.` : ""}
+                                    {ref.person ? `${firstName} ${lastName?.[0] || ''}` : name}
                                   </span>
                                 );
                               })}
@@ -758,8 +780,8 @@ export default function PlannerScreen({
             const monthBars = filteredRigs.flatMap((rig) =>
               getRigBars(plannerJobs, jobDates, rig.id).filter(
                 (plannerJob) =>
-                  new Date(plannerJob.start) <= monthEnd &&
-                  new Date(plannerJob.end) >= monthStart,
+                  plannerJob.start <= toDateStr(monthEnd) &&
+                  plannerJob.end >= toDateStr(monthStart),
               ),
             );
 
@@ -814,8 +836,8 @@ export default function PlannerScreen({
                     const dayBars = date
                       ? monthBars.filter(
                           (plannerJob) =>
-                            new Date(plannerJob.start) <= date &&
-                            new Date(plannerJob.end) >= date,
+                            plannerJob.start <= toDateStr(date) &&
+                            plannerJob.end >= toDateStr(date),
                         )
                       : [];
 
@@ -857,7 +879,8 @@ export default function PlannerScreen({
 
                             {dayBars.slice(0, 3).map((bar, barIndex) => (
                               <div
-                                key={barIndex}
+                                key={bar.id}
+                                onClick={() => selectAssignment(bar.id)}
                                 style={{
                                   fontSize: 9,
                                   fontWeight: 700,
@@ -953,12 +976,12 @@ export default function PlannerScreen({
               >
                 Personnel
               </div>
-              {tooltip.job.personnel.map((person) => (
+              {resolveCrew(tooltip.job.personnel, staff).map((ref, index) => (
                 <div
-                  key={person}
+                  key={index}
                   style={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }}
                 >
-                  {person}
+                  {ref.label}{!ref.person && ' (unresolved)'}
                 </div>
               ))}
             </div>
@@ -973,144 +996,24 @@ export default function PlannerScreen({
             const deltaX = event.clientX - dragging.startX;
             const daysDelta = Math.round(deltaX / dayWidth);
 
-            setJobDates((current) => {
-              const updated = { ...current[dragging.index] };
-
-              if (dragging.edge === "start") {
-                const nextStart = new Date(dragging.origStart);
-                nextStart.setDate(nextStart.getDate() + daysDelta);
-                if (new Date(toDateStr(nextStart)) < new Date(updated.end)) {
-                  updated.start = toDateStr(nextStart);
-                }
-              } else {
-                const nextEnd = new Date(dragging.origEnd);
-                nextEnd.setDate(nextEnd.getDate() + daysDelta);
-                if (new Date(toDateStr(nextEnd)) > new Date(updated.start)) {
-                  updated.end = toDateStr(nextEnd);
-                }
-              }
-
-              return { ...current, [dragging.index]: updated };
-            });
+            const current = jobDates[dragging.index] || { start: dragging.origStart, end: dragging.origEnd };
+            const next = shiftDate(dragging.edge === 'start' ? dragging.origStart : dragging.origEnd, daysDelta);
+            const updated = { ...current, [dragging.edge]: next };
+            if (updated.start <= updated.end) setJobDates({ [dragging.index]: updated });
           }}
-          onMouseUp={() => setDragging(null)}
+          onMouseUp={() => {
+            const dates = jobDates[dragging.index];
+            const source = dragging.source;
+            setDragging(null);
+            setJobDates({});
+            if (!dates || (dates.start === source.start && dates.end === source.end)) return;
+            const input = { ...(draft || assignmentDraft(source, staff)), ...dates };
+            setDraft(input);
+            saveAssignment(input);
+          }}
         />
       )}
 
-      {selectedBar !== null && plannerJobs[selectedBar] && jobDates[selectedBar] && (() => {
-        const selected = { ...plannerJobs[selectedBar], ...jobDates[selectedBar] };
-        const title = selected.isDowntime
-          ? selected.label || "Maintenance"
-          : `${selected.jobId || "Unassigned"} - ${selected.client || "No client"}`;
-
-        return (
-          <div
-            style={{
-              background: COLORS.white,
-              borderRadius: 12,
-              border: `2px solid ${COLORS.amber}`,
-              padding: "16px 20px",
-              display: "flex",
-              alignItems: "center",
-              gap: 20,
-              flexWrap: "wrap",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-            }}
-          >
-            <div style={{ fontWeight: 700, color: COLORS.textPrimary, fontSize: 13 }}>
-              {title}
-            </div>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div>
-                <label
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: COLORS.textMuted,
-                    textTransform: "uppercase",
-                    display: "block",
-                    marginBottom: 4,
-                  }}
-                >
-                  Start
-                </label>
-                <input
-                  type="date"
-                  value={jobDates[selectedBar].start}
-                  onChange={(event) =>
-                    setJobDates((current) => ({
-                      ...current,
-                      [selectedBar]: {
-                        ...current[selectedBar],
-                        start: event.target.value,
-                      },
-                    }))
-                  }
-                  style={{
-                    padding: "6px 10px",
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 7,
-                    fontSize: 13,
-                    fontWeight: 600,
-                  }}
-                />
-              </div>
-              <div>
-                <label
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: COLORS.textMuted,
-                    textTransform: "uppercase",
-                    display: "block",
-                    marginBottom: 4,
-                  }}
-                >
-                  End
-                </label>
-                <input
-                  type="date"
-                  value={jobDates[selectedBar].end}
-                  onChange={(event) =>
-                    setJobDates((current) => ({
-                      ...current,
-                      [selectedBar]: {
-                        ...current[selectedBar],
-                        end: event.target.value,
-                      },
-                    }))
-                  }
-                  style={{
-                    padding: "6px 10px",
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 7,
-                    fontSize: 13,
-                    fontWeight: 600,
-                  }}
-                />
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: COLORS.textMuted }}>
-              Duration: {daysBetween(jobDates[selectedBar].start, jobDates[selectedBar].end)} days
-            </div>
-            <button
-              onClick={() => setSelectedBar(null)}
-              style={{
-                marginLeft: "auto",
-                padding: "6px 14px",
-                background: COLORS.bg,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Done
-            </button>
-          </div>
-        );
-      })()}
     </div>
   );
 }

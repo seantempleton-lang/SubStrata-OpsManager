@@ -1,4 +1,6 @@
 import { pool, query } from "./db.mjs";
+import { plannerSelect, mapPlannerAssignment } from './planner.mjs';
+export { savePlannerAssignment } from './planner.mjs';
 import {
   generateLoginUsername,
   issuePasswordSetupToken,
@@ -486,25 +488,7 @@ async function fetchRows() {
       left join app_users u on u.id = ei.inspector_user_id
       order by ei.inspection_date desc
     `),
-    query(`
-      select
-        pa.id,
-        e.equipment_code,
-        j.job_number,
-        pa.assignment_type,
-        pa.title,
-        pa.client_name,
-        pa.site_address,
-        pa.start_date,
-        pa.end_date,
-        pa.color_hex,
-        pa.personnel,
-        pa.is_downtime
-      from planner_assignments pa
-      join equipment e on e.id = pa.equipment_id
-      left join jobs j on j.id = pa.job_id
-      order by pa.start_date asc
-    `),
+    query(`${plannerSelect} order by pa.start_date asc, pa.id`),
     query(`
       select
         lr.id,
@@ -870,19 +854,7 @@ export async function getBootstrapData(currentUserId) {
     notes: inspection.notes ?? "",
   }));
 
-  const plannerJobs = rows.plannerAssignments.map((assignment) => ({
-    id: assignment.id,
-    rigId: assignment.equipment_code,
-    jobId: assignment.job_number,
-    client: assignment.client_name,
-    site: assignment.site_address,
-    start: plainDate(assignment.start_date),
-    end: plainDate(assignment.end_date),
-    color: assignment.color_hex,
-    personnel: parseJson(assignment.personnel, []),
-    isDowntime: assignment.is_downtime,
-    label: assignment.assignment_type === "job" ? null : assignment.title,
-  }));
+  const plannerJobs = rows.plannerAssignments.map(mapPlannerAssignment);
 
   const leaveApplications = rows.leaveRequests.map((leaveRequest) => ({
     id: leaveRequest.id,

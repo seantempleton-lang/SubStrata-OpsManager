@@ -40,6 +40,7 @@ export default function App() {
     leaveApplications,
     reporting,
     createJob,
+    savePlannerAssignment,
     createEstimate,
     updateTimesheetStatus,
     createUser,
@@ -142,7 +143,7 @@ export default function App() {
   const SB = sidebarCollapsed;
   const sidebarW = SB ? 56 : 220;
 
-  if (loading) {
+  if (loading && !currentUser) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: COLORS.bg, color: COLORS.textSecondary, fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
         Loading PostgreSQL workspace...
@@ -150,7 +151,7 @@ export default function App() {
     );
   }
 
-  if (error) {
+  if (error && !currentUser) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: COLORS.bg, padding: 24, fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
         <div style={{ maxWidth: 560, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -356,6 +357,9 @@ export default function App() {
         </div>
 
         <div style={{ flex: 1, overflow: "auto", padding: "24px" }}>
+          {error && <div role="alert" style={{ padding: 12, marginBottom: 16, background: COLORS.redLight, color: COLORS.red, borderRadius: 8 }}>
+            Workspace refresh failed: {error}. Open edits are retained. <button disabled={loading} onClick={refresh}>Retry refresh</button>
+          </div>}
           {screen === "dashboard" && <DashboardScreen onNavigate={navigate} jobs={jobs} invoices={invoices} timesheets={timesheets} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "jobs" && <JobsScreen jobs={jobs} timesheets={timesheets} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "jobdetail" && selectedJob && <JobDetailScreen job={selectedJob} timesheets={timesheets} onBack={() => navigate("jobs")} />}
@@ -379,7 +383,7 @@ export default function App() {
           {screen === "newestimate" && <NewEstimateScreen clients={clients} onBack={() => navigate("estimates")} onSave={handleSaveEstimate} />}
           {screen === "suppliers" && <SuppliersScreen suppliers={suppliers} supplierInvoices={supplierInvoices} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "resources" && <ResourcesScreen equipment={equipment} inspections={inspections} jobs={jobs} staff={staff} plannerJobs={plannerJobs} leaveApplications={leaveApplications} subTab={resourcesSubTab} setSubTab={setResourcesSubTab} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
-          {screen === "planner" && <PlannerScreen jobs={jobs} equipment={equipment} plannerJobs={plannerJobs} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
+          {screen === "planner" && <PlannerScreen jobs={jobs} equipment={equipment} plannerJobs={plannerJobs} staff={staff} leaveApplications={leaveApplications} currentUser={currentUser} onSaveAssignment={savePlannerAssignment} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "reports" && <ReportsScreen estimates={estimates} jobs={jobs} equipment={equipment} invoices={invoices} reporting={reporting} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "hse" && <HSEScreen regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "admin" && currentUser?.appRoleRank >= 3 && (

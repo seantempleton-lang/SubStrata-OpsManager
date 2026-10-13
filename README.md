@@ -1,5 +1,9 @@
 # SubStrata — Field Operations Management
 
+## Current development plan
+
+See [PROJECT_DEVELOPMENT.md](PROJECT_DEVELOPMENT.md) for the current implementation status, the next planner/personnel assignment step, and the handoff for a new development thread. The application now has an Express/PostgreSQL backend and is deployed through Coolify; the Netlify guidance below is historical and needs updating.
+
 ## Deploy to Netlify
 
 ### Option A — Drag & Drop (quickest)

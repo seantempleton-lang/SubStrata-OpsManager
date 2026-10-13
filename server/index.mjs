@@ -9,6 +9,7 @@ import {
   deleteUserAccount,
   createEstimate,
   createJob,
+  savePlannerAssignment,
   getBootstrapData,
   inviteUserLoginAccess,
   resetUserPassword,
@@ -132,6 +133,22 @@ app.post("/api/jobs", requireAuth, async (req, res) => {
     res.status(201).json(job);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/planner-assignments', requireAuth, async (req, res) => {
+  try {
+    res.status(201).json(await savePlannerAssignment(null, req.body, req.auth.user));
+  } catch (error) {
+    res.status(error.statusCode ?? 500).json({ error: error.statusCode ? error.message : 'Unable to save assignment. Try again.' });
+  }
+});
+
+app.patch('/api/planner-assignments/:id', requireAuth, async (req, res) => {
+  try {
+    res.json(await savePlannerAssignment(req.params.id, req.body, req.auth.user));
+  } catch (error) {
+    res.status(error.statusCode ?? 500).json({ error: error.statusCode ? error.message : 'Unable to save assignment. Try again.' });
   }
 });
 
@@ -274,7 +291,7 @@ if (fs.existsSync(distDir)) {
 const port = Number(process.env.PORT || 3000);
 
 const server = app.listen(port, () => {
-  console.log(`SubStrata server listening on port ${port}`);
+  console.log(`SubStrata server listening on port ${server.address().port}`);
 });
 
 async function shutdown() {

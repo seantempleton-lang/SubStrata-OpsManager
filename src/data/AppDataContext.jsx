@@ -155,6 +155,18 @@ export function AppDataProvider({ children }) {
     [refresh],
   );
 
+  const savePlannerAssignment = useCallback(async (id, input) => {
+    const saved = await apiRequest(id ? `/api/planner-assignments/${id}` : '/api/planner-assignments', {
+      method: id ? 'PATCH' : 'POST', body: JSON.stringify(input),
+    });
+    // A committed save remains successful even if the following bootstrap request fails.
+    setData(current => ({ ...current, plannerJobs: [...current.plannerJobs.filter(a => a.id !== saved.id), saved] }));
+    let refreshWarning = null;
+    try { await loadBootstrapData(); }
+    catch (error) { refreshWarning = `Saved, but shared data could not refresh: ${error.message}`; }
+    return { saved, refreshWarning };
+  }, [loadBootstrapData]);
+
   const createEstimate = useCallback(
     async (estimateInput) => {
       const createdEstimate = await apiRequest("/api/estimates", {
@@ -283,6 +295,7 @@ export function AppDataProvider({ children }) {
       login,
       logout,
       createJob,
+      savePlannerAssignment,
       createEstimate,
       updateTimesheetStatus,
       updateSupplierInvoiceStatus,
@@ -297,6 +310,7 @@ export function AppDataProvider({ children }) {
     [
       createEstimate,
       createJob,
+      savePlannerAssignment,
       createUser,
       deleteUser,
       data,
