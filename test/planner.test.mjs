@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validatePlannerInput } from '../server/planner.mjs';
-import { nzToday, shiftDate, dateNumber, resolveCrew, hasCrewMember, plannerConflicts } from '../src/data/planner.js';
+import { nzToday, shiftDate, dateNumber, resolveCrew, hasCrewMember, plannerConflicts, matchesPlannerFilters } from '../src/data/planner.js';
 
 const id = '00000000-0000-4000-8000-000000000001';
 const valid = { equipmentId: id, jobId: id, assignmentType: 'job', title: 'Test', start: '2026-09-27', end: '2026-09-27', crewUserIds: [id] };
@@ -11,11 +11,19 @@ test('valid one-day assignment, maintenance and downtime; strict validation', ()
   for (const input of [null, [], { ...valid, equipmentId: 'RIG-01' }, { ...valid, assignmentType: 'leave' },
     { ...valid, jobId: null }, { ...valid, title: ' ' }, { ...valid, start: '2026-02-30' },
     { ...valid, end: '2026-09-26' }, { ...valid, start: '2026-9-27' }, { ...valid, crewUserIds: [id, id] },
-    { ...valid, crewUserIds: ['EMP-001'] }, { ...valid, color: 'red' }]) {
+    { ...valid, crewUserIds: ['EMP-001'] }, { ...valid, color: 'red' },
+    { ...valid, division: 'Operations' }, { ...valid, division: null }, { ...valid, region: 'East' }, { ...valid, region: '' }]) {
     assert.throws(() => validatePlannerInput(input), { statusCode: 400 });
   }
   for (const version of [undefined, '1', 0, 1.5]) assert.throws(() => validatePlannerInput({ ...valid, version }, true), { statusCode: 400 });
   assert.equal(validatePlannerInput({ ...valid, version: 1 }, true).version, 1);
+  assert.equal(validatePlannerInput({ ...valid, division: 'Geotech', region: 'South' }).division, 'Geotech');
+});
+test('assignment filters use the saved division/location context', () => {
+  const context = { division: 'Geotech', region: 'South' };
+  assert.equal(matchesPlannerFilters(context, 'South', { Geotech: true, Water: false }), true);
+  assert.equal(matchesPlannerFilters(context, 'North', { Geotech: true, Water: true }), false);
+  assert.equal(matchesPlannerFilters(context, 'all', { Geotech: false, Water: true }), false);
 });
 test('New Zealand calendar days across midnight and DST', () => {
   assert.equal(nzToday(new Date('2026-09-26T13:00:00Z')), '2026-09-27');

@@ -7,12 +7,14 @@ export function assignmentDraft(assignment, staff) {
   return { id: assignment.id, version: assignment.version, equipmentId: assignment.equipmentId,
     jobId: assignment.jobDbId || '', assignmentType: assignment.assignmentType,
     title: assignment.title || assignment.label || '', start: assignment.start, end: assignment.end,
+    division: assignment.division || '', region: assignment.region || '', contextEdited: true,
     color: assignment.color, crewUserIds: [...new Set(resolved.filter(r => r.person).map(r => r.person.dbId))],
     unresolved: resolved.filter(r => !r.person).map(r => r.label) };
 }
 
 export function newAssignment(rig) {
   return { id: null, equipmentId: rig?.dbId || '', jobId: '', assignmentType: 'job', title: '',
+    division: rig?.division || '', region: rig?.region || '', contextEdited: false,
     start: nzToday(), end: nzToday(), crewUserIds: [], unresolved: [] };
 }
 
@@ -20,8 +22,7 @@ export default function PlannerAssignmentForm({ draft, setDraft, jobs, equipment
   const [showAll, setShowAll] = useState(false);
   const rig = equipment.find(e => e.dbId === draft.equipmentId);
   const job = jobs.find(j => j.dbId === draft.jobId);
-  const division = job?.division || rig?.division;
-  const region = job?.region || rig?.region;
+  const { division, region } = draft;
   const crew = staff.filter(p => showAll || ((!division || p.division === division) && (!region || p.region === region)) || draft.crewUserIds.includes(p.dbId));
   const change = values => setDraft(current => ({ ...current, ...values }));
   const proposed = { id: draft.id || 'draft', rigId: rig?.id, jobId: job?.id, title: draft.title,
@@ -33,9 +34,11 @@ export default function PlannerAssignmentForm({ draft, setDraft, jobs, equipment
     <h2 style={{ fontSize: 17, margin: '0 0 14px' }}>{draft.id ? 'Edit assignment' : 'New assignment'}</h2>
     <fieldset disabled={!canEdit || saving} style={{ border: 0, padding: 0, margin: 0 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        {field('Rig', <select required aria-label="Rig" value={draft.equipmentId} onChange={e => change({ equipmentId: e.target.value })} style={control}><option value="">Select rig</option>{equipment.filter(e => e.type === 'rig').map(e => <option key={e.dbId} value={e.dbId}>{e.name} ({e.id})</option>)}</select>)}
+        {field('Rig', <select required aria-label="Rig" value={draft.equipmentId} onChange={e => { const selected = equipment.find(r => r.dbId === e.target.value); change({ equipmentId: e.target.value, ...(!draft.id && !draft.contextEdited && !draft.jobId ? { division: selected?.division || '', region: selected?.region || '' } : {}) }); }} style={control}><option value="">Select rig</option>{equipment.filter(e => e.type === 'rig').map(e => <option key={e.dbId} value={e.dbId}>{e.name} ({e.id})</option>)}</select>)}
         {field('Assignment type', <select aria-label="Assignment type" value={draft.assignmentType} onChange={e => change({ assignmentType: e.target.value, jobId: e.target.value === 'job' ? draft.jobId : '' })} style={control}>{['job', 'maintenance', 'downtime'].map(t => <option key={t} value={t}>{t}</option>)}</select>)}
-        {draft.assignmentType === 'job' && field('Job', <select required aria-label="Job" value={draft.jobId} onChange={e => { const j = jobs.find(j => j.dbId === e.target.value); change({ jobId: e.target.value, title: j?.title || '' }); }} style={control}><option value="">Select job</option>{jobs.map(j => <option key={j.dbId} value={j.dbId}>{j.id} — {j.title}</option>)}</select>)}
+        {draft.assignmentType === 'job' && field('Job', <select required aria-label="Job" value={draft.jobId} onChange={e => { const j = jobs.find(j => j.dbId === e.target.value); change({ jobId: e.target.value, title: j?.title || '', ...(!draft.id && !draft.contextEdited ? { division: j?.division || rig?.division || '', region: j?.region || rig?.region || '' } : {}) }); }} style={control}><option value="">Select job</option>{jobs.map(j => <option key={j.dbId} value={j.dbId}>{j.id} — {j.title}</option>)}</select>)}
+        {field('Division', <select required aria-label="Division" value={division} onChange={e => change({ division: e.target.value, contextEdited: true, color: draft.assignmentType === 'job' ? (e.target.value === 'Water' ? COLORS.blue : COLORS.teal) : draft.color })} style={control}><option value="">Select division</option><option>Water</option><option>Geotech</option></select>)}
+        {field('Location', <select required aria-label="Location" value={region} onChange={e => change({ region: e.target.value, contextEdited: true })} style={control}><option value="">Select location</option><option>North</option><option>South</option></select>)}
         {field('Title', <input required maxLength={300} aria-label="Title" value={draft.title} onChange={e => change({ title: e.target.value })} style={control} />)}
         {field('Start', <input required type="date" aria-label="Start" value={draft.start} onChange={e => change({ start: e.target.value })} style={control} />)}
         {field('End', <input required type="date" aria-label="End" min={draft.start} value={draft.end} onChange={e => change({ end: e.target.value })} style={control} />)}

@@ -74,6 +74,28 @@ test('persisted API assignments, permissions, atomic conflicts and Jobs compatib
     assert.deepEqual(boot.plannerJobs.find(a => a.id === saved.id).personnel, ['Historic Unresolved']);
     saved = await savePlannerAssignment(saved.id, { ...input, version: saved.version + 1 }, planner);
   });
+  await t.test('selectable division/location persist independently; legacy defaults and omitted fields remain compatible', async () => {
+    // A legacy plan with a rig in a different context must still default to its job.
+    await pool.query("update equipment set division='Geotech', region='North' where id=$1", [f.rig.id]);
+    await pool.query('update planner_assignments set division=null, region=null where id=$1', [saved.id]);
+    let boot = await (await request('/api/bootstrap', 'GET')).json();
+    saved = boot.plannerJobs.find(a => a.id === saved.id);
+    assert.equal(saved.division, 'Water'); assert.equal(saved.region, 'South');
+    for (const invalid of [{ division: 'Operations' }, { region: 'East' }]) {
+      assert.equal((await request(`/api/planner-assignments/${saved.id}`, 'PATCH', { ...input, version: saved.version, ...invalid })).status, 400);
+    }
+    saved = await savePlannerAssignment(saved.id, { ...input, version: saved.version, division: 'Geotech', region: 'North' }, planner);
+    await stopApi(); base = await startApi();
+    boot = await (await request('/api/bootstrap', 'GET')).json();
+    assert.equal(boot.plannerJobs.find(a => a.id === saved.id).division, 'Geotech');
+    assert.equal(boot.plannerJobs.find(a => a.id === saved.id).region, 'North');
+    saved = await savePlannerAssignment(saved.id, { ...input, version: saved.version }, planner);
+    assert.equal(saved.division, 'Geotech'); assert.equal(saved.region, 'North');
+    const row = (await pool.query('select division,region from jobs where id=$1', [f.job.id])).rows[0];
+    assert.deepEqual(row, { division: 'Water', region: 'South' });
+    const nonJob = await savePlannerAssignment(null, { ...input, assignmentType: 'maintenance', jobId: null, division: 'Water', region: 'South' }, planner);
+    assert.equal(nonJob.division, 'Water'); assert.equal(nonJob.region, 'South');
+  });
   await t.test('actual Jobs reader: window, My assignments, crew edits and attendance separation', { skip: !process.env.JOBS_REPO_PATH && 'Set JOBS_REPO_PATH to run the sibling Jobs reader.' }, async () => {
     const root = process.env.JOBS_REPO_PATH;
     const jobsDb = await import(pathToFileURL(path.join(root, 'server/db.mjs'))); jobsPool = jobsDb.pool;

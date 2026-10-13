@@ -4,7 +4,7 @@ import {
   eqStatusCfg,
 } from "../appData.js";
 import { Icon } from "../components/ui.jsx";
-import { nzToday, calendarDate, localDateString as toDateStr, shiftDate, dateNumber, resolveCrew, plannerConflicts } from '../data/planner.js';
+import { nzToday, calendarDate, localDateString as toDateStr, shiftDate, dateNumber, resolveCrew, plannerConflicts, matchesPlannerFilters } from '../data/planner.js';
 import PlannerAssignmentForm, { assignmentDraft, newAssignment } from './PlannerAssignmentForm.jsx';
 const addDays = (value, days) => calendarDate(shiftDate(value, days));
 
@@ -102,12 +102,11 @@ export default function PlannerScreen({
   const gridWidth = totalDays * dayWidth;
   const todayX = (dateNumber(toDateStr(today)) - dateNumber(toDateStr(viewStart))) * dayWidth;
 
+  const visiblePlannerJobs = plannerJobs.filter(a => matchesPlannerFilters(a, regionFilter, divisionFilter));
   const filteredRigs = equipment
     .filter((rig) => rig.type === "rig")
     .filter((rig) => {
-      if (regionFilter !== "all" && rig.region !== regionFilter) return false;
-      if (rig.division && !divisionFilter[rig.division]) return false;
-      return true;
+      return matchesPlannerFilters(rig, regionFilter, divisionFilter) || visiblePlannerJobs.some(a => a.rigId === rig.id);
     });
 
   const monthViewStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -122,7 +121,7 @@ export default function PlannerScreen({
   const conflicts = plannerConflicts(assignments, staff, leaveApplications,
     viewMode === 'gantt' ? toDateStr(viewStart) : toDateStr(monthViewStart),
     viewMode === 'gantt' ? shiftDate(toDateStr(viewStart), totalDays - 1) : toDateStr(monthViewEnd))
-    .filter(w => w.ids.some(id => assignments.some(a => a.id === id && filteredRigs.some(r => r.id === a.rigId))));
+    .filter(w => w.ids.some(id => visiblePlannerJobs.some(a => a.id === id)));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -406,7 +405,7 @@ export default function PlannerScreen({
               </div>
 
               {filteredRigs.map((rig) => {
-                const rigBars = getRigBars(plannerJobs, jobDates, rig.id);
+                const rigBars = getRigBars(visiblePlannerJobs, jobDates, rig.id);
                 const hasConflict = conflicts.some((conflict) => conflict.rigId === rig.id);
                 const status =
                   eqStatusCfg[rig.status] ??
@@ -778,7 +777,7 @@ export default function PlannerScreen({
             );
 
             const monthBars = filteredRigs.flatMap((rig) =>
-              getRigBars(plannerJobs, jobDates, rig.id).filter(
+              getRigBars(visiblePlannerJobs, jobDates, rig.id).filter(
                 (plannerJob) =>
                   plannerJob.start <= toDateStr(monthEnd) &&
                   plannerJob.end >= toDateStr(monthStart),

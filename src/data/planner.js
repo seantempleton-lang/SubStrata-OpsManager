@@ -10,6 +10,9 @@ export function localDateString(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 export function overlaps(aStart, aEnd, bStart, bEnd) { return aStart <= bEnd && aEnd >= bStart; }
+export function matchesPlannerFilters(context, region, divisions) {
+  return (region === 'all' || context.region === region) && (!context.division || Boolean(divisions[context.division]));
+}
 const normalized = value => String(value || '').trim().toLowerCase();
 export function personnelLabel(entry) {
   return typeof entry === 'string' ? entry : entry?.displayName || entry?.name || entry?.fullName || entry?.employeeCode || entry?.userId || 'Unknown crew';

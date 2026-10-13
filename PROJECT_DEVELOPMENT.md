@@ -6,7 +6,7 @@ Status: Planner persistence/personnel implementation and local validation comple
 
 ## Implementation result
 
-Implemented locally on 14 October 2026. See [planner implementation and validation notes](docs/PLANNER_PERSISTENCE.md) for the API contract, migration `014`, test commands, adopted permission/conflict defaults and staging checks. Build, four unit tests, seven integration test results (including the actual sibling Jobs reader), and local browser smoke checks passed. The disposable database was removed afterward. No production deployment or live assignment changes were made.
+Implemented locally on 14 October 2026, including selectable assignment division/location. See [planner implementation and validation notes](docs/PLANNER_PERSISTENCE.md) for the API contract, migrations `014` and `015`, test commands, adopted permission/conflict defaults and staging checks. Build, five unit tests, eight integration test results (including the actual sibling Jobs reader), and local browser smoke checks passed. The disposable database was removed afterward. No production deployment or live assignment changes were made during implementation.
 
 ## Implementation scope
 
