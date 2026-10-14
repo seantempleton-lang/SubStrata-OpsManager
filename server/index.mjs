@@ -29,6 +29,7 @@ import {
   setSessionCookie,
 } from "./auth.mjs";
 import { closePool } from "./db.mjs";
+import { listDailyLogReviews, getDailyLogReview, reviewDailyLog, getReviewPdf } from './dailyLogReviews.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -125,6 +126,31 @@ app.get("/api/bootstrap", requireAuth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+function reviewError(res, error) {
+  const status = error.statusCode || (error.code === '42501' ? 503 : 500);
+  if (status >= 500) console.error('Daily log review failed:', error);
+  res.status(status).json({ error: error.statusCode ? error.message : status === 503
+    ? 'Daily log review database permissions are not configured. Ask an administrator to check the shared Jobs database grants.'
+    : 'Unable to complete daily log review. Try again.' });
+}
+app.get('/api/daily-log-reviews', requireAuth, async (req, res) => {
+  try { res.json(await listDailyLogReviews(req.query, req.auth.user)); } catch (error) { reviewError(res, error); }
+});
+app.get('/api/daily-log-reviews/:id', requireAuth, async (req, res) => {
+  try { res.json(await getDailyLogReview(req.params.id, req.auth.user, req.query.revision ? Number(req.query.revision) : null)); } catch (error) { reviewError(res, error); }
+});
+app.post('/api/daily-log-reviews/:id/actions', requireAuth, async (req, res) => {
+  try { res.json(await reviewDailyLog(req.params.id, req.body, req.auth.user)); } catch (error) { reviewError(res, error); }
+});
+app.get('/api/daily-log-reviews/:id/revisions/:revision/pdf', requireAuth, async (req, res) => {
+  try {
+    const document = await getReviewPdf(req.params.id, Number(req.params.revision), req.auth.user);
+    res.set({ 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'inline; filename="submitted-daily-log.pdf"', 'X-Document-SHA256': document.sha256 });
+    res.type('application/pdf').send(document.content);
+  } catch (error) { reviewError(res, error); }
 });
 
 app.post("/api/jobs", requireAuth, async (req, res) => {

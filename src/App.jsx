@@ -15,6 +15,7 @@ import HSEScreen from "./screens/HSEScreen.jsx";
 import InvoicingScreen from "./screens/InvoicingScreen.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import AdminScreen from "./screens/AdminScreen.jsx";
+import DailyLogReviewsScreen from './screens/DailyLogReviewsScreen.jsx';
 
 export default function App() {
   const {
@@ -114,6 +115,7 @@ export default function App() {
       ],
     },
     { id: "planner", label: "Planner", icon: icons.calendar },
+    ...(currentUser?.appRoleRank >= 2 ? [{ id: 'daily_log_reviews', label: 'Daily Logs', icon: icons.reports }] : []),
     { id: "clients", label: "Clients", icon: icons.clients },
     { id: "suppliers", label: "Suppliers", icon: icons.clients },
     {
@@ -384,6 +386,7 @@ export default function App() {
           {screen === "suppliers" && <SuppliersScreen suppliers={suppliers} supplierInvoices={supplierInvoices} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "resources" && <ResourcesScreen equipment={equipment} inspections={inspections} jobs={jobs} staff={staff} plannerJobs={plannerJobs} leaveApplications={leaveApplications} subTab={resourcesSubTab} setSubTab={setResourcesSubTab} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "planner" && <PlannerScreen jobs={jobs} equipment={equipment} plannerJobs={plannerJobs} staff={staff} leaveApplications={leaveApplications} currentUser={currentUser} onSaveAssignment={savePlannerAssignment} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
+          {screen === 'daily_log_reviews' && currentUser?.appRoleRank >= 2 && <DailyLogReviewsScreen regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "reports" && <ReportsScreen estimates={estimates} jobs={jobs} equipment={equipment} invoices={invoices} reporting={reporting} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "hse" && <HSEScreen regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "admin" && currentUser?.appRoleRank >= 3 && (

@@ -1,14 +1,29 @@
 # SubStrata Ops Manager development plan
 
 Last inspected: 14 October 2026  
-Current priority: Review the local planner implementation and validate staging before rollout  
-Status: Planner persistence/personnel implementation and local validation complete; production rollout pending
+Current priority: Stage the approve/return daily-log review slice, then add material corrections and driller confirmation
+
+Status: Planner committed; first daily-log review slice implemented and locally verified; deployment/staging acceptance pending
+
+## Active next-phase plan
+
+The user selected supervisor review and approval of Jobs daily logs as the next priority. See [the office review plan](docs/OFFICE_REVIEW_PLAN.md) for the ordered work packages, completion criteria, cross-app boundaries and product decisions.
+
+The inbox, versioned approve/return actions, self-approval audit, returned comments in Jobs and resubmission lifecycle are implemented. See [review implementation notes](docs/OFFICE_REVIEW_IMPLEMENTATION.md) for migration 016, both-repository release requirements, validation and remaining slices. The user confirmed global Supervisor-and-higher review authority and allowed self-approval with an audit record.
+
+1. Close planner rollout and Jobs submission acceptance checks.
+2. Define one authenticated, versioned review-transition contract.
+3. Deliver the Ops inbox/detail screen and approve/return/resubmit slice.
+4. Add material corrections and driller confirmation.
+5. Add reasoned reopening, approved-revision PDFs and a Water/Geotech pilot.
+
+Jobs Step 5 submission/output is implemented locally; supervisor workflow is Step 6. Jobs retains a read-only office endpoint while Ops now owns approve/return actions. Both services retain unresolved submissions, and Jobs reconciles older review decisions before device retention. Deployment configuration remains to be verified; no deployment or live record changes were performed.
 
 ## Implementation result
 
 Implemented locally on 14 October 2026, including selectable assignment division/location. See [planner implementation and validation notes](docs/PLANNER_PERSISTENCE.md) for the API contract, migrations `014` and `015`, test commands, adopted permission/conflict defaults and staging checks. Build, five unit tests, eight integration test results (including the actual sibling Jobs reader), and local browser smoke checks passed. The disposable database was removed afterward. No production deployment or live assignment changes were made during implementation.
 
-## Implementation scope
+## Original planner implementation brief (historical)
 
 The implemented scope below preserves the existing Ops layout and working authentication. An authorised planner can create and edit real assignments in Ops and reload without losing changes. The actual Jobs reader was verified against the same disposable test database; live Jobs UI refresh and deployed database configuration remain staging checks.
 
@@ -106,7 +121,7 @@ Keep legacy reads working. Do not guess that a historical seed name refers to a 
 
 Jobs daily logs can reference assignment UUIDs. Edit assignments in place; do not delete and recreate rows to save date or crew changes. Keep job numbers unchanged across Ops, Jobs, Field and CORE-GS.
 
-## Next implementation step
+## Completed planner implementation scope (historical)
 
 ### 1. Assignment API and persistence
 
