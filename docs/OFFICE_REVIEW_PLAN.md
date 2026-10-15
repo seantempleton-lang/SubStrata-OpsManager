@@ -1,79 +1,98 @@
-# Next phase: supervisor review of Jobs daily logs
+# Next phase: daily work review and project invoicing basis
 
-Agreed priority: supervisor review and approval of Jobs daily logs. Plan prepared on 14 October 2026. This update records the plan; no deployment, live record changes or client email sending were performed.
+Priority and authority corrected by the user: 15 October 2026.
 
-## Current implementation progress
+## Outcome
 
-The first usable inbox/approve/return/resubmit slice is implemented and locally verified. See [implementation and release notes](OFFICE_REVIEW_IMPLEMENTATION.md). Environment rollout/submission acceptance still requires staging verification. The next implementation slice is material supervisor corrections and driller confirmation; reopening and final PDFs follow it.
+Jobs captures the right daily work information and submits it to Ops. The supervisor sees the important information at a glance, edits where necessary and locks the reviewed work into the project for invoicing. Changes may move back and forth between Jobs and Ops within the same increment.
 
-Confirmed decisions: any Supervisor, Administrator or SuperUser may review any log; self-approval is permitted and explicitly audited. Display filters do not restrict authority.
+The project collation vision is a matrix with work items down the rows and one individual daily log per column, showing each rig/crew's contribution alongside reviewed totals. Multiple logs on the same date remain separate. This supports an invoice requisition handed to admin for invoice preparation. See [PROJECT_WORK_COLLATION.md](PROJECT_WORK_COLLATION.md) for layout, source traceability, quantity rules and future requisition scope. This can be delivered in a separate chat; current cross-app work should preserve the required source data.
 
-## Starting position at planning (historical)
+Client-facing daily-log PDFs, signatures and email are nice-to-have follow-up. Preserve existing functions, but their refinement/configuration and final-PDF work do not gate the internal pilot.
 
-- Ops planner persistence, current-user crew selection, and selectable assignment division/location are implemented and committed. The latest inspected commit is `aed4093` on `main`. The deployment of that exact build and migration 015 has not been verified in this chat.
-- Planner local validation passed: build, five unit tests, eight integration test results, and browser smoke checks. Jobs compatibility was tested against the actual reader using a disposable database.
-- Jobs Step 5 (submission, immutable revisions, signatures, draft PDFs and deliberate email delivery) is implemented locally. Its production configuration and staging acceptance remain outstanding. Inspect its current repository before assuming the deployed service includes all of Step 5.
-- Jobs exposes a Supervisor-only, read-only office log endpoint. Approve/return/correct/reopen routes and an Ops review inbox are the next workflow work.
-- The existing office list uses a 14-day window and keeps older draft/returned/reopened records, but can omit older submitted records. A pending-review inbox must retain unresolved submissions regardless of age.
+Confirmed authority: any Supervisor, Administrator or SuperUser may review any log, including their own, with self-review audited. The supervisor may edit and lock directly without mandatory driller confirmation. Returning to the driller for correction or confirmation remains an optional action. This supersedes the earlier mandatory material-change confirmation rule.
 
-Source references: Ops `docs/PLANNER_PERSISTENCE.md`; sibling Jobs `docs/MVP_SPEC.md`, `PROJECT_DEVELOPMENT.md`, `server/dailyLogs.mjs`, `server/submissions.mjs`, and `db/004_submission_output.sql`. The Jobs MVP calls office review **Step 6**; submission/client output is **Step 5**.
+## 15 October implementation result and next sequence
 
-## 1. Close planner rollout and submission acceptance
+The paired implementation now supports an operational summary, bounded item/daily-note corrections and direct lock-in, followed by a project work matrix. The preserved walkthrough fixture contains a signed Water log, two bores with separate quantities, subcontractor explicit zero, a measurement exception and unchanged activity/attendance; the browser also exercises a separate submitted log through correction, lock, project contribution and Jobs reconciliation. This is local fixture acceptance, not field-user or target-environment acceptance.
 
-Confirm the latest Ops build is running, migrations 014/015 are recorded, and Ops/Jobs use the intended shared database. In staging, verify a current assignment with real user identities, division/location edits, reload, Jobs Refresh and My assignments filtering. Confirm changing a plan preserves existing daily logs and attendance.
+- Ops edits existing item quantities, explicit units, descriptions and item notes plus daily notes. A reason is required. Corrections cannot change identities, allocations, crew, times, bore details or add/delete items in this slice. Those editors remain next.
+- `correct_and_lock` checks both versions and the original snapshot, creates an immutable supervisor revision, records actor/time/reason/before/after and self-review, updates normalized Jobs item rows and locks atomically. Optional return/correct/resubmit is retained for submitted work. Returning is available after discarding unsaved office edits; this slice does not save office corrections into an outstanding driller request.
+- The project matrix totals recorded material/service/subcontractor quantities with exactly matching type/code/description/unit. Measurements/tests are visible exceptions requiring source review. Activity duration is summarized by allocation, never turned into billable hours. Blank cells differ from recorded zero.
+- Only the current, matching, approved revision without required driller action contributes. Historical submitted revisions never become extra columns. No reopening or replacement of already locked records is enabled; define invoicing/requisition consequences before that work.
+- Jobs shares validation, protects and displays correction metadata, retains queued offline work, and preserves quantity precision via migration 006. Ops requires migration 017 for corrections.
 
-Verify a completed Jobs log can submit an immutable revision and generate its draft PDF. Confirm which Step 5 migrations, signature configuration and document storage are deployed. Mailbox/contact configuration is needed for deliberate email delivery, but should not delay independent review-inbox development. Do not send email as part of acceptance without explicit authorization for the recipient and purpose.
+Ops build, 10 unit tests, 17 database integration results and the additional cross-app browser scenario passed; Jobs lint, 40 tests, contract validation and PWA build passed. Docker was restored for a disposable shared PostgreSQL workflow. Full notes, migration/grant requirements and commands are in [OFFICE_REVIEW_IMPLEMENTATION.md](OFFICE_REVIEW_IMPLEMENTATION.md#15-october-bounded-correction-and-project-matrix-increment).
 
-**Exit:** deployment/configuration evidence is recorded, and an actual submitted revision is available to review in staging. Continue local review development with disposable fixtures while environment checks are outstanding.
+Continue the sequence below for broader shared validation/editor coverage and representative Water/Geotech/ancillary field acceptance. Commercial catalogue mapping, measurement aggregation, project-level adjustments and controlled reopening/requisition freezing need explicit business decisions before implementation. Do not infer billing rules from this operational matrix.
 
-## 2. Agree and implement the review contract
+## Historical baseline before this increment
 
-Ops owns the supervisor screens and review authority. Jobs retains ownership of daily-log aggregates, immutable document revisions, actual attendance, signatures and document artifacts. Implement state-transition rules once and exercise them across both repositories. Choose the API/module boundary after inspecting current authentication and database grants; do not copy independent SQL workflows into both applications or forward an unauthenticated actor ID between services.
+Read-only source inspection on 15 October at Ops `af45f0a` confirms:
 
-Define the transition contract around permanent log UUIDs, expected aggregate server revision, exact document revision, authenticated reviewer, action, reason/comment and idempotency key. A transition must validate role/state/version and atomically record its result and audit event. A stale action must return a recoverable conflict. Synchronization revision and document revision remain separate values.
+- Planner persistence and structured crew assignment are implemented; their deployed state is unverified.
+- `src/screens/DailyLogReviewsScreen.jsx` lists submissions and shows attendance, activities, bore progress/details, quantities, comments and existing client output.
+- `server/dailyLogReviews.mjs` supports versioned/idempotent approve and return only. Approval locks the current log and records the reviewer; return sends a comment to Jobs.
+- Supervisor content editing and project invoice-preparation figures are not implemented by those actions. `src/screens/JobsModule.jsx` has project financial displays but no reviewed-daily-work handoff.
+- Jobs supports submission, offline recovery, immutable revisions, returned corrections/resubmission and office-state synchronization. Existing PDF/email functions are supplementary.
 
-Proposed authority follows current roles: Supervisor, Administrator and SuperUser can review; field users can act on their own returned records and confirmation requests. Any job/region-specific reviewer restriction needs an explicit product decision before those restrictions are implemented.
+See [OFFICE_REVIEW_IMPLEMENTATION.md](OFFICE_REVIEW_IMPLEMENTATION.md) for the shipped first-slice contract and historical local results. No runtime changes, live writes, deployments or fresh cross-app tests were performed during this planning update.
 
-**Exit:** allowed transitions, error responses, schema changes and cross-app synchronization behavior are documented and covered by focused tests. Applied migrations remain unchanged.
+## 1. Pair the field and supervisor walkthroughs
 
-## 3. First usable slice: inbox, detail, approve and return
+Use a realistic Water or Geotech shift, including two bores, crew changes, activity descriptions/times, materials/services, readings, subcontractor work and exceptions. Check the Jobs inputs and what Ops needs to summarize rather than validating a client PDF as the primary output.
 
-Add a Daily Logs review screen in Ops with pending/reviewed states, job, rig, owner, division, shift dates and filters. Pending work must remain visible beyond the Jobs 14-day assignment/device window.
+Agree the information needed at a glance: job/rig/owner/shift, attendance, activity totals, bore progress, quantities with units, subcontractor work, comments and exceptions. Retain detail behind the summary. Confirm what belongs under the project for invoice preparation and distinguish actual work from any chargeable classification. Do not invent rates, billing rules or invoice lines from raw log quantities.
 
-Detail shows the exact submitted revision, actual crew attendance, activity timeline, point progress, quantities, acknowledgement/signature coverage and draft PDF. Mark assignment context and actual log context clearly where they differ.
+Exit: a shared information/review example defines useful Jobs fields, Ops summary layout and project figures. Identify source gaps and adjust the apps together.
 
-Support two explicit actions:
+## 2. Refine capture and review together
 
-- **Approve:** approve and lock the exact revision the supervisor reviewed, recording who and when.
-- **Return:** require a correction comment; expose it to the owner in Jobs. Owner edits and resubmission create a new immutable document revision and preserve the original.
+Improve Jobs inputs/validation and Ops summary/detail screens around that example. Preserve job/point/crew attribution, original units, blank versus explicit zero, draft autosave and offline recovery. Make optional client acknowledgement/PDF/email secondary and prevent output problems from obstructing core submission/review.
 
-Jobs must receive office state changes on refresh/sync, retaining unsynced local work for explicit conflict recovery. Offline retries must not overwrite submitted/approved content or duplicate review actions. Start with approve/return; keep supervisor content editing disabled until the next slice is complete.
+Keep unresolved submissions visible regardless of age. Verify saved Ops plans and actual Jobs assignment reads separately from historical deployment reports.
 
-**Exit:** driller submits → supervisor returns → driller corrects/resubmits → supervisor approves, with matching states in Ops and Jobs and complete revision/audit history. Cover unauthorized users, stale reviewers, duplicate retries and old pending submissions.
+Exit: a driller can submit the right information and a supervisor can understand the work without opening a PDF or reconstructing totals manually.
 
-## 4. Corrections and driller confirmation
+## 3. Supervisor edits and direct lock-in
 
-Distinguish administrative notes/presentation changes from material changes to times, attendance, quantities, points, work descriptions or allocations. Preserve before/after revisions and attributable audit events.
+Define one authoritative edit/lock contract in Ops and reconcile its result in Jobs. Use authenticated roles, permanent log/project IDs, expected server version, exact work revision and idempotent requests. Prevent stale saves and repeat locks from changing the wrong version.
 
-Material corrections create an awaiting-confirmation state. The owner can accept or reject them in Jobs; approval remains blocked while confirmation is unresolved. Signatures stay attached to the originally acknowledged revision and cannot be edited by supervisors. Administrative changes must not become a route around material-change confirmation.
+Preserve the original submission and create attributable corrected versions with before/after values, actor, timestamp and reason. Supervisor corrections may include work times, attendance, quantities/units, bore/allocation and descriptions. Check domain constraints on the server; do not simply bypass Jobs validation. Prior client signatures, if any, stay attached to the earlier acknowledged work.
 
-**Exit:** accepted and rejected correction scenarios work through offline refresh/sync, without silently altering signed or approved revisions.
+Offer two paths: edit and lock directly, or return with a clear request for correction/confirmation. Requested driller action remains visible until resolved or withdrawn by an audited supervisor decision; it is not mandatory for every material edit. Jobs must receive the resulting state/revision while retaining conflicting offline work for deliberate resolution.
 
-## 5. Reopen, final PDF and pilot
+Exit: review/edit/direct-lock and optional return/correct/resubmit work across both apps with role checks, stale/replayed requests, preserved original work and auditable changes.
 
-Allow authorized reopening only with a mandatory reason. Preserve the previous approved revision and begin a new review cycle. Generate a final PDF for the approved revision, excluding internal notes, payroll codes and audit details. Preserve the earlier draft artifact and explicit delivery history; approval/PDF generation never sends email automatically.
+## 4. Project view and controlled changes after lock
 
-Pilot the full lifecycle with Water and Geotech users, a rig log and an ancillary record, a cross-midnight shift, absent coverage, duplicate retries, stale review actions and signed material corrections. Ancillary records remain internal and do not acquire client-PDF/signature functions.
+Expose reviewed work and agreed totals under the correct project, linking each figure to its effective locked log/revision. Define how current `approved` relates to project lock-in; reuse or extend it explicitly rather than adding a label that suggests an unimplemented financial transition.
 
-**Exit:** role/transition tests, real-Postgres integration, builds and both-app browser checks pass; staging acceptance is recorded before production rollout. Track field pilot reliability against the Jobs MVP's two-payroll-fortnight acceptance target.
+Use the [daily-log contribution matrix vision](PROJECT_WORK_COLLATION.md): item code/description/unit rows, one rig/crew daily log per column with date/shift/log reference, per-log quantities, summary totals and drill-down to source revisions. Preserve multi-bore attribution, compatible units and blank versus zero. Keep recorded actuals, billing adjustments and project-level charges distinguishable. Agree separate requisition selection/locking and admin handoff before implementing the financial boundary.
 
-## Decisions to settle before the relevant slice
+Only the effective locked version contributes. Draft, returned, superseded and unresolved requested-action work must not be silently included. Reopening/replacement preserves prior versions and must not count both. Before implementing the boundary, define treatment of inputs already used in invoice preparation or an issued invoice.
 
-- How Jobs should display selectable assignment division/location alongside the authoritative job context; changing an Ops plan currently does not change the job's division.
-- Which administrative edits are permitted without owner confirmation; use the existing Jobs MVP categories as the baseline.
+Lock-in means reviewed work is available for invoice preparation. It does not itself create an invoice, establish charge rates, export to accounting or mean the work has been billed. Those capabilities remain separate scope.
 
-Independent inbox, contract and test preparation can proceed while these product decisions are being settled.
+Exit: accepted project figures reconcile to the reviewed source work, revisions cannot duplicate totals, and controlled corrections preserve history and Jobs state.
 
-## Follow-on backlog
+## 5. Verify and pilot the internal workflow
 
-After the review slice: planner cancellation and change history; catalogue administration; client contact selection for deliberate PDF delivery; audit other Ops write paths; replace fixed dashboard labels; update root/database deployment documentation. Payroll export, invoicing integration and wider CORE-GS integration follow a validated review lifecycle.
+Verify shared database identity, compatible migrations/grants, Ops plans, CORE-GS reads and Jobs phone HTTPS offline/restart. Test Water/Geotech and ancillary records, cross-midnight work, repeated/stale edit/lock actions, optional driller return, reconnection conflicts and replaced versions in project totals.
+
+Default to meaningful builds and focused tests for the changes in each app, followed by user walkthroughs and feedback through Coolify on the work server. The disposable shared-database/browser scenario has passed for this increment. Repeat local Docker checks only for a specific unresolved migration, transaction or integration question, explaining the purpose beforehand; Docker is not a routine progress gate. Use [the Coolify handoff](COOLIFY_REVIEW_HANDOFF.md) for the next compatible release and user acceptance steps. Record target-environment acceptance separately from local results. Pilot reliability remains two payroll fortnights without lost records or unresolved critical workflow defects.
+
+Exit: accurate field capture → quick review/edit → direct lock or optional driller return → correct project figures, with recovery and attribution demonstrated. Client deliverables are not an exit criterion.
+
+## Optional follow-up
+
+Client signature/PDF presentation, final approved PDFs, Microsoft 365 authorisation, contact defaults and deliberate client delivery. Existing output stays linked to its original revision and email always requires an explicit Send action.
+
+## Decisions needed for implementation
+
+- Exact activity/quantity grouping and units for the review summary and project figures.
+- Whether any chargeable/non-chargeable classification is needed in the first slice, distinct from recorded actuals.
+- Controlled reopen/replacement behaviour, especially where locked work has already been used in invoicing.
+- Displaying assignment division/location alongside recorded job context without rewriting actual work.
+
+These do not reopen the confirmed authority decision: supervisors may edit and lock directly, with optional return for driller correction/confirmation.

@@ -1,6 +1,7 @@
 ﻿import React, { useState } from "react";
 import { COLORS, statusConfig, TS_STATUS_CFG, entryHours, icons, fmt, pct } from "../appData.js";
 import { Icon, StatusBadge, DivisionBadge, ProgressBar } from "../components/ui.jsx";
+import ProjectDailyWork from '../components/ProjectDailyWork.jsx';
 const JobsScreen = ({ jobs = [], onNavigate, regionFilter = "all", divisionFilter = { Water: true, Geotech: true } }) => {
   const [filter, setFilter] = useState("all");
   const [divFilter, setDivFilter] = useState("all");
@@ -105,7 +106,7 @@ const JobsScreen = ({ jobs = [], onNavigate, regionFilter = "all", divisionFilte
 };
 
 // Job detail screen
-const JobDetailScreen = ({ job, timesheets = [], onBack }) => {
+const JobDetailScreen = ({ job, timesheets = [], onBack, canReviewWork = false }) => {
   const [tab, setTab] = useState("overview");
   const notes = [
     { author: "Craig Tait", date: "10 Mar 2026 14:32", type: "general", text: "Completed 3rd drill run today. Down to 42m, groundwater encountered at 38m. Good flow rate. Weather clear." },
@@ -193,12 +194,13 @@ const JobDetailScreen = ({ job, timesheets = [], onBack }) => {
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 2, background: COLORS.bg, padding: 4, borderRadius: 10, border: `1px solid ${COLORS.border}`, width: "fit-content" }}>
-        {["overview","notes","timesheets","documents"].map(t => (
+        {["overview", ...(canReviewWork ? ['daily work'] : []), "notes","timesheets","documents"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ padding: "7px 16px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === t ? COLORS.white : "transparent", color: tab === t ? COLORS.textPrimary : COLORS.textMuted, boxShadow: tab === t ? "0 1px 3px rgba(0,0,0,0.1)" : "none", textTransform: "capitalize" }}>{t}</button>
         ))}
       </div>
 
       {/* Tab Content */}
+      {tab === 'daily work' && canReviewWork && <ProjectDailyWork jobId={job.dbId} />}
       {tab === "overview" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 16 }}>
           <div style={{ background: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>

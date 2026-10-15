@@ -364,7 +364,7 @@ export default function App() {
           </div>}
           {screen === "dashboard" && <DashboardScreen onNavigate={navigate} jobs={jobs} invoices={invoices} timesheets={timesheets} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
           {screen === "jobs" && <JobsScreen jobs={jobs} timesheets={timesheets} onNavigate={navigate} regionFilter={regionFilter} divisionFilter={divisionFilter} />}
-          {screen === "jobdetail" && selectedJob && <JobDetailScreen job={selectedJob} timesheets={timesheets} onBack={() => navigate("jobs")} />}
+          {screen === "jobdetail" && selectedJob && <JobDetailScreen job={selectedJob} timesheets={timesheets} canReviewWork={currentUser?.appRoleRank >= 2} onBack={() => navigate("jobs")} />}
           {screen === "timesheets" && (
             <TimesheetsScreen
               staff={staff}

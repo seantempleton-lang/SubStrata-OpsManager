@@ -30,6 +30,7 @@ import {
 } from "./auth.mjs";
 import { closePool } from "./db.mjs";
 import { listDailyLogReviews, getDailyLogReview, reviewDailyLog, getReviewPdf } from './dailyLogReviews.mjs';
+import { getProjectDailyWork } from './projectDailyWork.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -137,6 +138,9 @@ function reviewError(res, error) {
 }
 app.get('/api/daily-log-reviews', requireAuth, async (req, res) => {
   try { res.json(await listDailyLogReviews(req.query, req.auth.user)); } catch (error) { reviewError(res, error); }
+});
+app.get('/api/projects/:id/daily-work', requireAuth, async (req, res) => {
+  try { res.json(await getProjectDailyWork(req.params.id, req.query, req.auth.user)); } catch (error) { reviewError(res, error); }
 });
 app.get('/api/daily-log-reviews/:id', requireAuth, async (req, res) => {
   try { res.json(await getDailyLogReview(req.params.id, req.auth.user, req.query.revision ? Number(req.query.revision) : null)); } catch (error) { reviewError(res, error); }

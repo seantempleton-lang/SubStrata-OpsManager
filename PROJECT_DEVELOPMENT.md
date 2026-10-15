@@ -1,23 +1,41 @@
 # SubStrata Ops Manager development plan
 
-Last inspected: 14 October 2026  
-Current priority: Stage the approve/return daily-log review slice, then add material corrections and driller confirmation
+Last inspected: 15 October 2026\
+Current priority: Jobs captures the right information → Ops at-a-glance review/edit → lock reviewed work into the project for invoicing
 
-Status: Planner committed; first daily-log review slice implemented and locally verified; deployment/staging acceptance pending
+Status: Planner, approve/return, bounded supervisor correction/direct lock and initial project work matrix implemented locally; broader editing and requisition rules remain next; client deliverables optional follow-up
+
+## 15 October implementation increment
+
+Both repositories were inspected before code changes, preserving the existing uncommitted documentation. Ops now summarizes submitted work, permits corrections to existing item quantities/units/descriptions/notes and daily notes, and locks the corrected immutable revision in one attributable action. The project **Daily work** tab collates effective locked operational item quantities with separate log columns and source-entry/revision drill-down. Approval remains the existing `approved` state and is labelled as work lock-in, without implying billing.
+
+Jobs shares the item/correction validation contract, protects office correction metadata from device writes, displays before/after corrections, and receives the locked revision through normal synchronization. Jobs migration `006_log_item_quantity_precision.sql` removes child-row rounding that conflicted with the existing numeric aggregate contract. Ops adds migration `017_daily_log_corrections.sql`. See [current implementation and validation](docs/OFFICE_REVIEW_IMPLEMENTATION.md#15-october-bounded-correction-and-project-matrix-increment).
+
+Local checks passed: Ops build and 10 unit tests; 17 shared-database integration results; an additional cross-app browser acceptance scenario; Jobs lint, 40 tests, contracts (including a corrected aggregate) and PWA build. The browser used both actual applications and the disposable shared PostgreSQL database. No deployment, live writes or client email occurred.
+
+Next: extend correction forms to times, attendance, bore/progress/allocation and item additions/removals using shared domain constraints; agree work-item mapping and measurement treatment; define controlled reopening and requisition selection/freeze/reuse before implementing those boundaries. No pricing, commercial adjustments, requisition finalisation or accounting integration was added.
 
 ## Active next-phase plan
 
-The user selected supervisor review and approval of Jobs daily logs as the next priority. See [the office review plan](docs/OFFICE_REVIEW_PLAN.md) for the ordered work packages, completion criteria, cross-app boundaries and product decisions.
+### Deployment and testing preference, confirmed 15 October
 
-The inbox, versioned approve/return actions, self-approval audit, returned comments in Jobs and resubmission lifecycle are implemented. See [review implementation notes](docs/OFFICE_REVIEW_IMPLEMENTATION.md) for migration 016, both-repository release requirements, validation and remaining slices. The user confirmed global Supervisor-and-higher review authority and allowed self-approval with an audit record.
+The deployment target is **Coolify on the work server**. Default development checks are local builds and focused tests that do not require containers, followed by user testing and feedback through the remotely deployed apps. Keep implementing independent work while feedback is pending. Local Docker is optional: use it only to answer a specific unresolved database, migration, transaction or cross-app integration question, and explain that purpose before starting it. Do not routinely recreate a local deployment or repeat the already-passed disposable workflow for documentation or unrelated changes.
 
-1. Close planner rollout and Jobs submission acceptance checks.
-2. Define one authenticated, versioned review-transition contract.
-3. Deliver the Ops inbox/detail screen and approve/return/resubmit slice.
-4. Add material corrections and driller confirmation.
-5. Add reasoned reopening, approved-revision PDFs and a Water/Geotech pilot.
+The last Docker run served the shared-database migration/correction/reconciliation checks described above. Its database/container and local test servers were removed. Deployment of this increment remains unverified. The next user-managed release and feedback steps are in [the Coolify review handoff](docs/COOLIFY_REVIEW_HANDOFF.md); this documentation update does not deploy, push code or change server records.
 
-Jobs Step 5 submission/output is implemented locally; supervisor workflow is Step 6. Jobs retains a read-only office endpoint while Ops now owns approve/return actions. Both services retain unresolved submissions, and Jobs reconciles older review decisions before device retention. Deployment configuration remains to be verified; no deployment or live record changes were performed.
+The user corrected the priority on 15 October: accurate Jobs submission, quick Ops supervisor review/editing and project lock-in for invoicing. Develop Jobs and Ops together around that internal loop. Client-facing daily-log PDFs, signatures and email are nice-to-have follow-up and do not gate the pilot. See [the office review plan](docs/OFFICE_REVIEW_PLAN.md).
+
+The project Daily work view now collates recorded work-item rows against individual daily-log columns, each representing one rig/crew record with its date/shift and log reference. Multiple same-day logs remain separate and every contribution traces to its source revision. The intended invoice requisition for admin remains future work, as do commercial mapping and controlled reopening. See [the project collation vision](docs/PROJECT_WORK_COLLATION.md). The private reference image and its specific contents are not stored in the repository.
+
+The inbox, versioned approve/return actions, self-review audit, returned comments/resubmission, bounded item/note corrections and initial locked-work matrix are implemented. See [review implementation notes](docs/OFFICE_REVIEW_IMPLEMENTATION.md) for Ops through migration 017, Jobs through 006, release requirements, validation and remaining slices. Global Supervisor-and-higher review authority and audited self-review remain confirmed.
+
+1. Use the compatible increment in the next user-managed Coolify release, verifying shared database identity, Jobs through 006, Ops through 017 and the documented runtime grants.
+2. Gather feedback from a realistic Jobs submission → Ops summary → item/note correction and direct lock → project matrix → Jobs synchronization walkthrough. Include optional return/correct/resubmit and same-day logs with distinct rig/crew records.
+3. Refine capture and review from that feedback, and expand shared constraints/editor coverage to times, attendance, bore/progress/allocation and item additions/removals. Return for driller correction/confirmation stays optional.
+4. Agree commercial work-item and measurement mapping, controlled reopening/replacement, and requisition selection/freeze/reuse before implementing those boundaries. Preserve originals and count only effective locked revisions.
+5. Continue targeted checks and remote user acceptance, including phone HTTPS offline/restart where available, then pilot the internal loop. Client PDFs/delivery remain follow-up.
+
+The earlier read-only inspection at `af45f0a` is the historical baseline, superseded by the local implementation result above. Supervisor editing currently covers existing item values and daily notes; the project matrix is operational collation. Preserve original submissions, before/after revisions and actor/time/reason as the editors expand. Locking remains distinct from invoice creation, rates or accounting export. Deployment remains unverified.
 
 ## Implementation result
 

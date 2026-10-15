@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { pool } from './db.mjs';
 import { assertRoleAtLeast } from './authorization.mjs';
+import { applyWorkCorrections } from '../src/domain/reviewWork.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REVIEW_STATES = ['submitted', 'under_review'];
@@ -21,11 +22,15 @@ export function reviewContent(log) {
 export function validateReviewRequest(id, input) {
   requireId(id);
   if (!input || typeof input.requestId !== 'string' || !UUID.test(input.requestId)) problem('A review request UUID is required.');
-  if (!['approve', 'return'].includes(input.action)) problem('Choose Approve or Return.');
+  if (!['approve', 'return', 'correct_and_lock'].includes(input.action)) problem('Choose Lock, Correct and lock, or Return.');
   if (!Number.isSafeInteger(input.baseRevision) || input.baseRevision < 1 || !Number.isSafeInteger(input.documentRevision) || input.documentRevision < 1) problem('The server and document revisions being reviewed are required.');
   if (input.comment != null && (typeof input.comment !== 'string' || input.comment.length > 4000)) problem('Review comments must be text of at most 4000 characters.');
   if (input.action === 'return' && !input.comment?.trim()) problem('A correction comment is required when returning a log.');
-  return { requestId: input.requestId.toLowerCase(), action: input.action, baseRevision: input.baseRevision, documentRevision: input.documentRevision, comment: input.comment?.trim() || null };
+  if (input.action === 'correct_and_lock' && !input.comment?.trim()) problem('A reason is required for supervisor work corrections.');
+  if (input.action !== 'correct_and_lock' && input.corrections !== undefined) problem('Work corrections require Correct and lock.');
+  if (input.action === 'correct_and_lock' && (!input.corrections || typeof input.corrections !== 'object' || Array.isArray(input.corrections))) problem('Work corrections are required.');
+  return { requestId: input.requestId.toLowerCase(), action: input.action, baseRevision: input.baseRevision, documentRevision: input.documentRevision, comment: input.comment?.trim() || null,
+    ...(input.action === 'correct_and_lock' ? { corrections: input.corrections } : {}) };
 }
 async function requireJobs(db = pool) {
   const result = await db.query(`select to_regclass('jobs_app.daily_logs') is not null
@@ -115,20 +120,55 @@ export async function reviewDailyLog(id, rawInput, user) {
     if (!REVIEW_STATES.includes(row.status)) problem('Only a submitted log can be approved or returned. Reload its current state.', 409);
     const { rows: [record] } = await db.query('select snapshot,content_sha256 from jobs_app.log_revisions where daily_log_id=$1 and revision=$2', [id, input.documentRevision]);
     if (!record || !row.aggregate || canonical(reviewContent(record.snapshot)) !== canonical(reviewContent(row.aggregate))) problem('The working log no longer matches its submitted revision. Resolve the version conflict before reviewing.', 409);
-    const now = new Date().toISOString(), status = input.action === 'approve' ? 'approved' : 'returned';
+    const now = new Date().toISOString(), status = input.action === 'return' ? 'returned' : 'approved';
+    let work = row.aggregate, changes = [], documentRevision = input.documentRevision;
+    if (input.action === 'correct_and_lock') {
+      const readiness = await db.query(`select
+        exists(select 1 from pg_constraint where conrelid='public.ops_daily_log_review_actions'::regclass
+          and conname='ops_daily_log_review_actions_action_check' and pg_get_constraintdef(oid) like '%correct_and_lock%')
+        and exists(select 1 from information_schema.columns where table_schema='jobs_app' and table_name='log_items'
+          and column_name='quantity' and data_type='numeric' and numeric_scale is null) as ready`);
+      if (!readiness.rows[0].ready) problem('Supervisor corrections require Ops migration 017 and Jobs migration 006 in the shared database.', 503);
+      const corrected = applyWorkCorrections(work, input.corrections);
+      work = corrected.log; changes = corrected.changes; documentRevision++;
+      // Signatures remain attached to the acknowledged work, never corrected work.
+      if (work.clientAcknowledgement?.status === 'signed_on_device') work.clientAcknowledgement = {
+        status: 'not_signed', reasonCode: 'CONTENT_CHANGED', reasonNotes: 'The earlier signature is retained against the work originally acknowledged.',
+        clientEmail: work.clientAcknowledgement.clientEmail || null, priorSignatureUploadId: work.clientAcknowledgement.signatureUploadId,
+      };
+      work.officeCorrection = { sourceDocumentRevision: input.documentRevision, documentRevision,
+        reviewerId: user.dbId, reviewerName: user.name, correctedAt: now, reason: input.comment, changes };
+    }
     const selfReview = row.owner_user_id === user.dbId;
     const officeReview = { action: input.action, comment: input.comment, reviewerId: user.dbId, reviewerName: user.name,
-      reviewedAt: now, documentRevision: input.documentRevision, selfReview };
-    const result = { id, status, serverRevision: Number(row.server_revision) + 1, documentRevision: input.documentRevision, officeReview };
-    const aggregate = { ...row.aggregate, status, serverRevision: result.serverRevision, updatedAt: now, officeReview,
+      reviewedAt: now, documentRevision, selfReview };
+    const result = { id, status, serverRevision: Number(row.server_revision) + 1, documentRevision, officeReview };
+    const aggregate = { ...work, status, currentDocumentRevision: documentRevision, serverRevision: result.serverRevision, updatedAt: now, officeReview,
       requiresDrillerAction: status === 'returned', ...(status === 'approved' ? { approvedAt: now } : {}) };
-    await db.query('update jobs_app.daily_logs set status=$2,server_revision=$3,aggregate=$4::jsonb,updated_at=$5 where id=$1', [id, status, result.serverRevision, JSON.stringify(aggregate), now]);
+    if (input.action === 'correct_and_lock') {
+      const contentHash = createHash('sha256').update(canonical(reviewContent(aggregate))).digest('hex');
+      const saved = await db.query(`insert into jobs_app.log_revisions(daily_log_id,revision,request_id,request_hash,snapshot,content_sha256,created_by_user_id)
+        values($1,$2,$3,$4,$5::jsonb,$6,$7) on conflict(request_id) do nothing returning revision`, [id, documentRevision, input.requestId, requestHash, JSON.stringify(aggregate), contentHash, user.dbId]);
+      if (!saved.rowCount) problem('This request ID already identifies a different Jobs revision. Reload before reviewing.', 409);
+      // Keep Jobs' normalized child records and aggregate in agreement.
+      const children = await db.query('select id from jobs_app.log_items where daily_log_id=$1', [id]);
+      if (children.rowCount !== aggregate.items.length || children.rows.some(child => !aggregate.items.some(item => item.id === child.id))) problem('The stored item records do not match this revision. Resolve the data conflict before locking.', 409);
+      for (const item of aggregate.items) {
+        const updated = await db.query(`update jobs_app.log_items set quantity=$3,unit=$4,item_label_snapshot=$5,notes=$6
+          where daily_log_id=$1 and id=$2`, [id, item.id, item.quantity, item.unit, item.itemLabelSnapshot, item.notes]);
+        if (updated.rowCount !== 1) problem('An item record changed during review. Reload before locking.', 409);
+      }
+    }
+    if (input.action === 'correct_and_lock') await db.query(`update jobs_app.daily_logs set status=$2,server_revision=$3,aggregate=$4::jsonb,updated_at=$5,
+        current_document_revision=$6,notes=$7,client_acknowledgement=$8::jsonb where id=$1`,
+        [id, status, result.serverRevision, JSON.stringify(aggregate), now, documentRevision, aggregate.notes, JSON.stringify(aggregate.clientAcknowledgement)]);
+    else await db.query('update jobs_app.daily_logs set status=$2,server_revision=$3,aggregate=$4::jsonb,updated_at=$5 where id=$1', [id, status, result.serverRevision, JSON.stringify(aggregate), now]);
     await db.query(`insert into public.ops_daily_log_review_actions(request_id,daily_log_id,actor_user_id,action,request_hash,
       document_revision,base_server_revision,comment,self_review,result)
-      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)`, [input.requestId, id, user.dbId, input.action, requestHash, input.documentRevision, input.baseRevision, input.comment, selfReview, JSON.stringify(result)]);
+      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)`, [input.requestId, id, user.dbId, input.action, requestHash, documentRevision, input.baseRevision, input.comment, selfReview, JSON.stringify(result)]);
     await db.query(`insert into jobs_app.audit_events(daily_log_id,actor_user_id,event_type,before_revision,after_revision,metadata)
-      values($1,$2,$3,$4,$5,$6::jsonb)`, [id, user.dbId, status === 'approved' ? 'supervisor_approved' : 'supervisor_returned', input.baseRevision, result.serverRevision,
-      JSON.stringify({ requestId: input.requestId, documentRevision: input.documentRevision, contentHash: record.content_sha256, comment: input.comment, selfReview })]);
+      values($1,$2,$3,$4,$5,$6::jsonb)`, [id, user.dbId, input.action === 'correct_and_lock' ? 'supervisor_corrected_and_locked' : status === 'approved' ? 'supervisor_approved' : 'supervisor_returned', input.baseRevision, result.serverRevision,
+      JSON.stringify({ requestId: input.requestId, sourceDocumentRevision: input.documentRevision, documentRevision, sourceContentHash: record.content_sha256, comment: input.comment, selfReview, changes })]);
     await db.query('commit'); return result;
   } catch (error) { await db.query('rollback'); throw error; } finally { db.release(); }
 }

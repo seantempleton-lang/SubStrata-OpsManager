@@ -10,6 +10,7 @@ import { useTestDatabase, createFixture } from './fixture.mjs';
 useTestDatabase();
 const { pool } = await import('../server/db.mjs');
 const { listDailyLogReviews, getDailyLogReview, reviewDailyLog } = await import('../server/dailyLogReviews.mjs');
+const { getProjectDailyWork } = await import('../server/projectDailyWork.mjs');
 const root = process.env.JOBS_REPO_PATH;
 if (!root) throw new Error('JOBS_REPO_PATH is required to verify the actual Jobs submission/review lifecycle.');
 
@@ -17,7 +18,7 @@ test('Ops review and actual Jobs return/resubmit/approve lifecycle', async t => 
   const f = await createFixture(pool);
   const owner = { userId: f.users[1].id, displayName: f.users[1].full_name, employeeCode: f.users[1].employee_code, appRole: 'FieldUser' };
   const supervisor = { dbId: f.users[0].id, name: f.users[0].full_name, appRole: 'Supervisor' };
-  let server;
+  let server, apiPort;
   const jobsDb = await import(pathToFileURL(path.join(root, 'server/db.mjs')));
   t.after(async () => {
     try {
@@ -32,7 +33,10 @@ test('Ops review and actual Jobs return/resubmit/approve lifecycle', async t => 
   if (!(await pool.query("select 1 from information_schema.columns where table_schema='jobs_app' and table_name='log_points' and column_name='daily_details'")).rowCount) {
     await pool.query(await fs.readFile(path.join(root, 'db/005_daily_bore_details.sql'), 'utf8'));
   }
+  await pool.query(await fs.readFile(path.join(root, 'db/006_log_item_quantity_precision.sql'), 'utf8'));
   const { createDailyLog, endShift } = await import(pathToFileURL(path.join(root, 'src/domain/dailyLog.js')));
+  assert.equal((await fs.readFile(path.join(root, 'src/domain/reviewWork.js'), 'utf8')).replaceAll('\r\n', '\n'),
+    (await fs.readFile(new URL('../src/domain/reviewWork.js', import.meta.url), 'utf8')).replaceAll('\r\n', '\n'), 'Both applications must ship the same correction/item validation contract.');
   const { submissionContent, workContent, contentHash } = await import(pathToFileURL(path.join(root, 'src/domain/submission.js')));
   const { applySyncBatch, readDailyLog, listDailyLogs } = await import(pathToFileURL(path.join(root, 'server/dailyLogs.mjs')));
   const { submitLog, uploadSignature, downloadDocument, readSignature } = await import(pathToFileURL(path.join(root, 'server/submissions.mjs')));
@@ -55,6 +59,7 @@ test('Ops review and actual Jobs return/resubmit/approve lifecycle', async t => 
   await t.test('API authentication, required comments and revision validation', async () => {
     server = spawn(process.execPath, ['server/index.mjs'], { env: { ...process.env, PORT: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
     const port = await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error('API start timed out')), 10000); server.stdout.on('data', data => { const match = String(data).match(/port (\d+)/); if (match) { clearTimeout(timer); resolve(match[1]); } }); server.on('error', reject); });
+    apiPort = port;
     const url = `http://127.0.0.1:${port}/api/daily-log-reviews`;
     assert.equal((await fetch(url)).status, 401);
     const token = randomUUID();
@@ -82,9 +87,9 @@ test('Ops review and actual Jobs return/resubmit/approve lifecycle', async t => 
   });
   await t.test('owner corrects/resubmits; server-owned decision metadata cannot be forged', async () => {
     const realReview = structuredClone(log.officeReview);
-    const ack = await sync({ ...log, notes: 'Corrected workshop description.', officeReview: { comment: 'Forged decision' }, approvedAt: '2000-01-01T00:00:00Z' }, log.serverRevision);
+    const ack = await sync({ ...log, notes: 'Corrected workshop description.', officeReview: { comment: 'Forged decision' }, officeCorrection: { reason: 'Forged correction' }, approvedAt: '2000-01-01T00:00:00Z' }, log.serverRevision);
     assert.equal(ack.status, 'applied');
-    log = await readDailyLog(log.id, owner); assert.deepEqual(log.officeReview, realReview); assert.equal(log.approvedAt, undefined);
+    log = await readDailyLog(log.id, owner); assert.deepEqual(log.officeReview, realReview); assert.equal(log.approvedAt, undefined); assert.equal(log.officeCorrection, undefined);
     log = (await submitLog(log.id, { requestId: randomUUID(), baseRevision: log.serverRevision, contentHash: await contentHash(submissionContent(log)) }, owner)).log;
     assert.equal(log.currentDocumentRevision, 2); assert.equal(log.status, 'submitted');
     assert.equal((await getDailyLogReview(log.id, supervisor, 1)).canReview, false);
@@ -139,5 +144,78 @@ test('Ops review and actual Jobs return/resubmit/approve lifecycle', async t => 
     assert.deepEqual((await readSignature(signatureId, owner)).drawing, drawing);
     assert.deepEqual((await pool.query('select to_jsonb(c) as value from jobs_app.crew_attendance c where daily_log_id=$1', [rig.id])).rows, attendance);
     assert.ok(!JSON.stringify(reviewed.snapshot).includes('Internal supervisor note'));
+  });
+  await t.test('supervisor corrects and locks a two-bore signed log; Jobs and project use only its effective revision', async () => {
+    const { changePoint } = await import(pathToFileURL(path.join(root, 'src/domain/dailyLog.js')));
+    const assignment = { assignmentId: null, job: { jobId: f.job.id, jobNumber: f.job.job_number, title: 'Correction fixture', division: 'Water', region: 'South' },
+      equipment: { equipmentId: f.rig.id, equipmentCode: f.rig.equipment_code, name: 'Fixture rig', division: 'Water' }, personnel: [owner], points: [{ pointId: 'BH-A', jobNumber: f.job.job_number }] };
+    let rig = createDailyLog({ assignment, owner, startedAt: '2026-10-13T20:00:00Z', startDepthM: 0, initialActivity: { code: 'DRILL', label: 'Drilling' } });
+    rig = changePoint(rig, { nextPoint: { pointId: 'BH-B', jobNumber: f.job.job_number }, endDepthM: 5, endStatus: 'Completed', nextStartDepthM: 0 }, '2026-10-13T23:00:00Z');
+    rig = endShift(rig, { endDepthM: 7, endStatus: 'Completed' }, '2026-10-14T03:00:00Z');
+    rig.items = [
+      { id: randomUUID(), itemType: 'material', itemCode: 'OTHER', itemLabelSnapshot: 'Cement', quantity: 2, unit: 'bag', notes: null, pointSegmentId: rig.points[0].id },
+      { id: randomUUID(), itemType: 'material', itemCode: 'OTHER', itemLabelSnapshot: 'Cement', quantity: 3, unit: 'bag', notes: null, pointSegmentId: rig.points[1].id },
+      { id: randomUUID(), itemType: 'subcontractor', itemCode: 'OTHER', itemLabelSnapshot: 'Service locate', quantity: 0, unit: 'visit', notes: 'Not used', pointSegmentId: null },
+      { id: randomUUID(), itemType: 'measurement', itemCode: 'OTHER', itemLabelSnapshot: 'Water level', quantity: 1.123456, unit: 'm', notes: null, pointSegmentId: rig.points[0].id },
+    ];
+    const signatureId = randomUUID();
+    rig.clientAcknowledgement = { status: 'signed_on_device', signerName: 'Fixture Client', companyRole: null, clientEmail: null, signedAt: rig.shift.endedAt, signatureUploadId: signatureId, contentHash: await contentHash(workContent(rig)) };
+    await sync(rig);
+    assert.equal(Number((await pool.query('select quantity from jobs_app.log_items where id=$1', [rig.items[3].id])).rows[0].quantity), 1.123456, 'Jobs capture must preserve accepted precision before office correction.');
+    await uploadSignature(rig.id, { id: signatureId, snapshot: rig, drawing: { strokes: [[[0.1, 0.2], [0.8, 0.6]]] } }, owner);
+    rig = (await submitLog(rig.id, { requestId: randomUUID(), baseRevision: 1, contentHash: await contentHash(submissionContent(rig)) }, owner)).log;
+    const original = structuredClone(rig), originalPdf = await downloadDocument(rig.id, 1, owner);
+    const command = { requestId: randomUUID(), action: 'correct_and_lock', baseRevision: rig.serverRevision, documentRevision: 1,
+      comment: 'Second bore quantity checked against delivery docket.', corrections: { notes: 'Reviewed work', items: [{ id: rig.items[1].id, quantity: 4.123456 }] } };
+    await assert.rejects(() => reviewDailyLog(rig.id, command, { ...supervisor, appRole: 'FieldUser' }), { statusCode: 403 });
+    for (const corrections of [{ items: [{ id: rig.items[1].id, quantity: -1 }] }, { job: { jobId: randomUUID() } }, { items: [{ id: randomUUID(), quantity: 4 }] }]) {
+      await assert.rejects(() => reviewDailyLog(rig.id, { ...command, requestId: randomUUID(), corrections }, supervisor), { statusCode: 400 });
+    }
+    assert.equal((await readDailyLog(rig.id, owner)).serverRevision, command.baseRevision);
+    const priorRequest = (await pool.query('select request_id from jobs_app.log_revisions where daily_log_id=$1 and revision=1', [rig.id])).rows[0].request_id;
+    await assert.rejects(() => reviewDailyLog(rig.id, { ...command, requestId: priorRequest }, supervisor), { statusCode: 409 });
+    const displacedItem = randomUUID();
+    await pool.query('update jobs_app.log_items set id=$2 where id=$1', [rig.items[0].id, displacedItem]);
+    await assert.rejects(() => reviewDailyLog(rig.id, { ...command, requestId: randomUUID() }, supervisor), { statusCode: 409 });
+    await pool.query('update jobs_app.log_items set id=$2 where id=$1', [displacedItem, rig.items[0].id]);
+    assert.equal((await pool.query('select count(*) as n from jobs_app.log_revisions where daily_log_id=$1', [rig.id])).rows[0].n, '1', 'Failed corrections must roll back their new immutable revision.');
+    const results = await Promise.all([reviewDailyLog(rig.id, command, supervisor), reviewDailyLog(rig.id, command, supervisor)]);
+    assert.equal(results.filter(result => result.duplicate).length, 1);
+    rig = await readDailyLog(rig.id, owner);
+    assert.equal(rig.status, 'approved'); assert.equal(rig.currentDocumentRevision, 2); assert.equal(rig.requiresDrillerAction, false);
+    assert.deepEqual(rig.officeCorrection.changes.map(change => change.before), [null, 3]);
+    assert.equal(rig.clientAcknowledgement.status, 'not_signed'); assert.equal(rig.clientAcknowledgement.priorSignatureUploadId, signatureId);
+    assert.deepEqual(rig.crew, original.crew); assert.deepEqual(rig.points, original.points); assert.deepEqual(rig.activities, original.activities);
+    assert.deepEqual((await getDailyLogReview(rig.id, supervisor, 1)).snapshot, original);
+    assert.equal((await getDailyLogReview(rig.id, supervisor, 2)).signatureCovered, false);
+    assert.deepEqual((await downloadDocument(rig.id, 1, owner)).content, originalPdf.content);
+    assert.ok((await readSignature(signatureId, owner)).drawing.strokes.length);
+    assert.equal(Number((await pool.query('select quantity from jobs_app.log_items where id=$1', [rig.items[1].id])).rows[0].quantity), 4.123456);
+    assert.equal((await pool.query('select count(*) as n from jobs_app.log_revisions where daily_log_id=$1', [rig.id])).rows[0].n, '2');
+    assert.equal((await pool.query("select count(*) as n from jobs_app.audit_events where daily_log_id=$1 and event_type='supervisor_corrected_and_locked'", [rig.id])).rows[0].n, '1');
+    await assert.rejects(() => reviewDailyLog(rig.id, { ...command, corrections: { notes: 'Different' } }, supervisor), { statusCode: 409 });
+    await assert.rejects(() => reviewDailyLog(rig.id, { ...command, requestId: randomUUID() }, supervisor), { statusCode: 409 });
+    assert.equal((await sync({ ...original, notes: 'Offline unsynced work' }, original.serverRevision)).status, 'rejected');
+    assert.equal((await sync({ ...original, status: 'returned', notes: 'Offline unsynced work' }, original.serverRevision)).status, 'conflict');
+    await assert.rejects(() => getProjectDailyWork(f.job.id, {}, owner), { statusCode: 403 });
+    const matrix = await getProjectDailyWork(f.job.id, { from: '2026-10-14', to: '2026-10-14' }, supervisor);
+    assert.equal(matrix.columns.filter(column => column.id === rig.id).length, 1);
+    assert.equal(matrix.columns.find(column => column.id === rig.id).revision, 2);
+    assert.equal(matrix.rows.find(row => row.description === 'Cement').total, 6.123456);
+    assert.equal(matrix.rows.find(row => row.description === 'Service locate').total, 0);
+    assert.equal(matrix.rows.find(row => row.description === 'Cement').contributions[rig.id].entries[1].point, 'BH-B');
+    assert.ok(matrix.exceptions.some(entry => entry.id === rig.id && entry.message.includes('Water level')));
+    assert.equal((await getProjectDailyWork(f.job.id, { from: '2026-10-15' }, supervisor)).columns.length, 0);
+    assert.equal((await pool.query('select count(*) as n from jobs_app.email_deliveries where daily_log_id=$1', [rig.id])).rows[0].n, '0');
+  });
+  if (process.env.REVIEW_BROWSER_TEST === '1') await t.test('browser: correct/lock, source revision, project contribution and Jobs reconciliation', async () => {
+    let rig = endShift(createDailyLog({ assignment: { job: { jobId: f.job.id, jobNumber: f.job.job_number, title: 'Browser fixture', division: 'Water', region: 'South' },
+      equipment: { equipmentId: f.rig.id, equipmentCode: f.rig.equipment_code, name: 'Browser fixture rig', division: 'Water' }, personnel: [owner] }, startingPoint: null,
+      owner, startedAt: '2026-10-14T19:00:00Z', initialActivity: { code: 'PRESTART', label: 'Site setup' } }), {}, '2026-10-15T03:00:00Z');
+    rig.items.push({ id: randomUUID(), itemType: 'material', itemCode: 'OTHER', itemLabelSnapshot: 'Browser cement', quantity: 5, unit: 'bag', notes: null, pointSegmentId: null });
+    await sync(rig);
+    rig = (await submitLog(rig.id, { requestId: randomUUID(), baseRevision: 1, contentHash: await contentHash(submissionContent(rig)) }, owner)).log;
+    const { reviewBrowser } = await import('./reviewBrowser.mjs');
+    await reviewBrowser({ root, pool, opsUrl: `http://127.0.0.1:${apiPort}`, owner, supervisor, project: f.job, log: rig });
   });
 });

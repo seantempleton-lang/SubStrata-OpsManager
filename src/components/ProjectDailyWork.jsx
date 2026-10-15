@@ -1,0 +1,37 @@
+import React, { useEffect, useState } from 'react';
+import DailyLogReviewsScreen from '../screens/DailyLogReviewsScreen.jsx';
+import { COLORS } from '../appData.js';
+import { formatQuantity as number } from '../domain/dailyWork.js';
+
+const time = value => new Date(value).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland', dateStyle: 'medium', timeStyle: 'short' });
+export default function ProjectDailyWork({ jobId }) {
+  const [from, setFrom] = useState(''), [to, setTo] = useState(''), [data, setData] = useState(null), [error, setError] = useState('');
+  const [source, setSource] = useState(null), [selected, setSelected] = useState(null), [refresh, setRefresh] = useState(0);
+  const [sourcePending, setSourcePending] = useState(false), [stale, setStale] = useState(false);
+  useEffect(() => {
+    let current = true; setData(null); setError(''); setSource(null); setSelected(null); setStale(false);
+    fetch(`/api/projects/${jobId}/daily-work?from=${from}&to=${to}`, { credentials: 'same-origin' }).then(async response => {
+      const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Unable to load project daily work.');
+      if (current) setData(result);
+    }).catch(failure => { if (current) setError(failure.message); });
+    return () => { current = false; };
+  }, [jobId, from, to, refresh]);
+  const open = (column, contribution = null) => {
+    if (sourcePending) { setError('Complete or close the current source review before selecting another contribution. Your corrections are retained.'); return; }
+    setError(''); setSource({ id: column.id, revision: column.revision }); setSelected(contribution);
+  };
+  return <section className="project-daily-work" style={{ background: COLORS.white, color: COLORS.textPrimary, padding: 20, borderRadius: 12, border: `1px solid ${COLORS.border}`, fontSize: 13, lineHeight: 1.5 }}>
+    <style>{`.project-daily-work h2 {font-size:20px;margin:0 0 8px}.project-daily-work p {margin:8px 0 14px}.project-daily-work .period-controls {display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:18px 0}.project-daily-work .period-controls label {display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:${COLORS.textSecondary}}.project-daily-work .period-controls input,.project-daily-work .period-controls button {border:1px solid ${COLORS.border};border-radius:7px;padding:8px 12px;background:${COLORS.white};font:inherit;color:${COLORS.textPrimary}}.project-daily-work button:disabled {opacity:.55;cursor:default}.project-daily-work .matrix-table th,.project-daily-work .matrix-table td {padding:12px;text-align:left;border-bottom:1px solid ${COLORS.border};vertical-align:top;font-size:12px}.project-daily-work .matrix-table thead th {font-weight:600}.project-daily-work .matrix-table thead th>div {font-size:11px;color:${COLORS.textSecondary};margin-top:6px}.project-daily-work .matrix-table button,.project-daily-work .source-link {border:0;background:transparent;text-align:left;color:${COLORS.blue};font:inherit;cursor:pointer;padding:0;line-height:1.6;overflow-wrap:anywhere}.project-daily-work .matrix-table td button {background:${COLORS.blue}0d;border:1px solid ${COLORS.blue}25;border-radius:5px;padding:3px 7px;font-weight:600;white-space:nowrap}.project-daily-work details>summary {cursor:pointer;margin:12px 0;font-weight:600}.project-daily-work .source-entry {overflow-wrap:anywhere}`}</style>
+    <h2>Reviewed daily work</h2><p>Operational item quantities from effective locked revisions. Use this as a source for invoice preparation. Pricing, commercial adjustments and requisition finalisation are separate.</p>
+    <div className="period-controls"><label>From (NZ)<input type="date" value={from} disabled={sourcePending} onChange={e => setFrom(e.target.value)} /></label><label>To (NZ)<input type="date" value={to} disabled={sourcePending} onChange={e => setTo(e.target.value)} /></label><button disabled={sourcePending} onClick={() => setRefresh(value => value + 1)}>Refresh reviewed work</button></div>
+    {stale && <p role="status">Source review saved. Refresh reviewed work to update the matrix.</p>}
+    {error && <p role="alert">{error}</p>}{!error && !data && <p>Loading project contributions…</p>}
+    {data && <><p>{data.columns.length} locked logs · {data.excluded.length} submitted/returned or inconsistent records excluded from totals. Blank cells mean no contribution; zero is explicitly recorded.</p>
+      <div style={{ overflow: 'auto', maxHeight: 560 }}><table className="matrix-table" style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: '100%', textAlign: 'left' }}><thead><tr><th style={{ position: 'sticky', left: 0, top: 0, zIndex: 3, background: COLORS.bg, minWidth: 260 }}>Code · description · unit</th><th style={{ position: 'sticky', top: 0, background: COLORS.bg }}>Locked total</th>{data.columns.map(column => <th key={column.id} style={{ minWidth: 220, position: 'sticky', top: 0, background: COLORS.bg }}><button title={`Log ${column.id}`} onClick={() => open(column)}>{time(column.startedAt)} · {column.shift}<br />{column.rig} · {column.owner}<br />Log {column.id.slice(0, 8)} · revision {column.revision}</button><div>{column.crew.join(', ')} · {column.origin}</div></th>)}</tr></thead><tbody>{data.rows.map(row => <tr key={row.key}><th style={{ position: 'sticky', left: 0, zIndex: 1, background: COLORS.white, padding: 10 }}>{row.code} · {row.description}<div>{row.type} · {row.unit}</div></th><td style={{ padding: 10 }}>{number(row.total)} {row.unit}</td>{data.columns.map(column => <td key={column.id} style={{ padding: 10 }}>{Object.hasOwn(row.contributions, column.id) ? <button onClick={() => open(column, row.contributions[column.id])}>{number(row.contributions[column.id].quantity)} {row.unit}</button> : <span aria-label="No recorded contribution">—</span>}</td>)}</tr>)}</tbody></table></div>
+      {!data.rows.length && <p>No additive material, service or subcontractor quantities in the locked logs for this period.</p>}
+      {!!data.exceptions.length && <details open><summary>Source entries requiring review ({data.exceptions.length})</summary>{data.exceptions.map((entry, i) => <p key={i}><button className="source-link" title={`Log ${entry.id}`} onClick={() => open({ id: entry.id, revision: entry.revision })}>Log {entry.id.slice(0, 8)} · revision {entry.revision}</button> · {entry.message}</p>)}</details>}
+      {!!data.excluded.length && <details><summary>Work excluded from totals</summary>{data.excluded.map(entry => <p key={entry.id}><button className="source-link" title={`Log ${entry.id}`} onClick={() => open({ id: entry.id, revision: entry.revision })}>Log {entry.id.slice(0, 8)}</button> · {entry.status.replaceAll('_', ' ')}</p>)}</details>}
+    </>}
+    {source && <div style={{ marginTop: 24 }}><h3>Contribution source · revision {source.revision}</h3><p>Log {source.id}</p>{selected && selected.entries.map(entry => <p className="source-entry" key={entry.id}>{entry.itemCode} · {entry.itemLabelSnapshot}: {entry.quantity} {entry.unit} · {entry.point || 'Site-wide'} · entry {entry.id}<br />{entry.notes}</p>)}<DailyLogReviewsScreen key={`${source.id}:${source.revision}`} initialLogId={source.id} initialRevision={source.revision} sourceOnly onReviewPendingChange={setSourcePending} onReviewSaved={() => setStale(true)} onClose={() => { setSource(null); setSelected(null); setSourcePending(false); }} /></div>}
+  </section>;
+}
